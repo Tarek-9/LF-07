@@ -16,18 +16,18 @@ import {
 const Navigation = () => {
     return (
         <NavigationMenu>
-            <NavigationMenuList>
+            <NavigationMenuList className="gap-4">
                 <NavigationMenuItem>
                     <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
-                        <Link href="/">
-                            <House color='black'></House>
+                        <Link href="/" className="p-4">
+                            <House color='black' className="h-8 w-8"/>
                         </Link>
                     </NavigationMenuLink>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
-                    <NavigationMenuTrigger>Safe</NavigationMenuTrigger>
+                    <NavigationMenuTrigger className="text-xl">Safe</NavigationMenuTrigger>
                     <NavigationMenuContent>
-                        <ul className="grid w-[200px] gap-4">
+                        <ul className="grid w-[400px] gap-5 p-5 text-xl">
                             <li>
                                 <NavigationMenuLink asChild>
                                     <Link href="/safe/booking">Safe buchen</Link>
@@ -40,19 +40,19 @@ const Navigation = () => {
                     </NavigationMenuContent>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
-                    <NavigationMenuTrigger>Hilfe</NavigationMenuTrigger>
+                    <NavigationMenuTrigger className="text-xl">Hilfe</NavigationMenuTrigger>
                     <NavigationMenuContent>
-                        <ul className="grid w-[200px] gap-4">
+                        <ul className="grid w-[400px] gap-5 p-5 text-xl">
                             <li>
                                 <NavigationMenuLink asChild>
-                                    <Link href="/support/faq" className="flex-row items-center gap-2">
-                                        <CircleHelpIcon/>
+                                    <Link href="/support/faq" className="flex-row items-center gap-3">
+                                        <CircleHelpIcon className="h-8 w-8"/>
                                         FAQ
                                     </Link>
                                 </NavigationMenuLink>
                                 <NavigationMenuLink asChild>
-                                    <Link href="/support/contactForm" className="flex-row items-center gap-2">
-                                        <CircleIcon/>
+                                    <Link href="/support/contactForm" className="flex-row items-center gap-3">
+                                        <CircleIcon className="h-8 w-8"/>
                                         Kontaktformular
                                     </Link>
                                 </NavigationMenuLink>
@@ -63,7 +63,7 @@ const Navigation = () => {
                 <NavigationMenuItem>
                     <NavigationMenuLink className='p-0' asChild>
                         <Link href="/profile">
-                            <img className='h-9 rounded-full' src='https://api.samplefaces.com/face?width=200'
+                            <img className='h-16 p-2 rounded-full' src='https://api.samplefaces.com/face?width=200'
                                  alt='Random Profile'/>
                         </Link>
                     </NavigationMenuLink>

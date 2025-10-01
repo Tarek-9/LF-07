@@ -37,12 +37,6 @@ const ContactForm = () => {
                     render={({field}) => (
                         <>
                             <FormItem>
-                                <FormLabel>Name</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="Ihr Name" {...field} />
-                                </FormControl>
-                            </FormItem>
-                            <FormItem>
                                 <FormLabel>E-Mail</FormLabel>
                                 <FormControl>
                                     <Input placeholder="Ihre E-Mail" {...field} />
@@ -57,13 +51,12 @@ const ContactForm = () => {
                             <FormItem>
                                 <FormLabel>Anliegen</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="Ihr Anliegen" {...field} />
+                                    <Textarea placeholder="Ihr Anliegen" {...field} />
                                 </FormControl>
                             </FormItem>
                         </>
                     )}
                 />
-                {/* ... weitere Felder ... */}
                 <Button type="submit">Nachricht senden</Button>
             </form>
         </Form>

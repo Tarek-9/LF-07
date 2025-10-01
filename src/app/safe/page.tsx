@@ -1,6 +1,8 @@
+import Booking from "@/components/organisms/Booking/Booking";
 
-const Safe = () => {
+
+const SafePage = () => {
     return <div>Test</div>
 }
 
-export default Safe;
+export default SafePage;

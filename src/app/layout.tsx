@@ -1,6 +1,6 @@
 import type {Metadata} from "next";
 import React from "react";
-import "./globals.css";
+import './globals.css';
 import {Geist, Geist_Mono} from "next/font/google";
 import Navigation from "@/components/molecules/Navigation/Navigation";
 
@@ -25,8 +25,8 @@ const RootLayout = ({children}: Readonly<{ children: React.ReactNode }>): React.
         <body
             className={`${geistSans.variable} ${geistMono.variable} antialiased px-8`}
         >
-            <Navigation/>
-            {children}
+        <Navigation/>
+        {children}
         </body>
         </html>
     );
