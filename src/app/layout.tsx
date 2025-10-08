@@ -3,6 +3,8 @@ import React from "react";
 import './globals.css';
 import {Geist, Geist_Mono} from "next/font/google";
 import Navigation from "@/components/molecules/Navigation/Navigation";
+import {Toaster} from "react-hot-toast";
+
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -27,6 +29,7 @@ const RootLayout = ({children}: Readonly<{ children: React.ReactNode }>): React.
         >
         <Navigation/>
         {children}
+        <Toaster position="top-right"/>
         </body>
         </html>
     );

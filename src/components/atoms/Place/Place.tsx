@@ -44,11 +44,11 @@ const Place = ({placeName, status, size}: PlaceProps) => {
     const setSize = (sz: sizeTyp) => {
         switch (sz) {
             case 'small':
-                return 'w-16';
+                return 'h-16';
             case 'medium':
-                return 'w-24';
+                return 'h-26';
             case 'large':
-                return 'w-32';
+                return 'h-36';
             default:
                 return '';
         }
@@ -65,7 +65,7 @@ const Place = ({placeName, status, size}: PlaceProps) => {
                 <TooltipTrigger asChild>
                     <DialogTrigger asChild>
                         <Button variant="ghost"
-                                className={`h-16 text-white flex hover:bg-amber-600 ${setPlaceStyles(status)} ${setSize(size)}`}>
+                                className={`w-20 text-white flex hover:bg-amber-600 ${setPlaceStyles(status)} ${setSize(size)}`}>
                             <span>{placeName}</span>
                         </Button>
                     </DialogTrigger>
@@ -93,7 +93,7 @@ const Place = ({placeName, status, size}: PlaceProps) => {
                     </form>
                 </DialogContent>) : (
                 <DialogContent>
-                    <DialogTitle>Dieser Platz kann nicht reserviert</DialogTitle>
+                    <DialogTitle>Dieser Platz kann nicht reserviert werde</DialogTitle>
                 </DialogContent>)
             }
         </Dialog>

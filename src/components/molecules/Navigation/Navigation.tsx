@@ -33,7 +33,7 @@ const Navigation = () => {
                                     <Link href="/safe/booking" className='text-xl'>Safe reservieren</Link>
                                 </NavigationMenuLink>
                                 <NavigationMenuLink asChild>
-                                    <Link href="/support/contactForm" className='text-xl'>Fehler melden</Link>
+                                    <Link href="/safe/reportError" className='text-xl'>Fehler melden</Link>
                                 </NavigationMenuLink>
                             </li>
                         </ul>

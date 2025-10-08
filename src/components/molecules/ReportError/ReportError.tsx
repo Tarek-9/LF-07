@@ -1,7 +1,7 @@
 "use client";
 
-import {zodResolver} from "@hookform/resolvers/zod";
 import {useForm} from "react-hook-form";
+import {zodResolver} from "@hookform/resolvers/zod";
 import {z} from "zod";
 import {useRouter} from "next/navigation";
 import {toast} from "react-hot-toast";
@@ -16,20 +16,21 @@ import {
 } from "@/components/ui/form";
 import {Input} from "@/components/ui/input";
 import {Textarea} from "@/components/ui/textarea";
+import ChoosePlace from "@/components/atoms/ChoosePlace/ChoosePlace";
 
 const formSchema = z.object({
-    name: z.string().min(2, "Der Name muss mindestens 2 Zeichen lang sein."),
     email: z.string().email("Bitte gib eine gültige E-Mail-Adresse ein."),
+    place: z.number().min(1, "Du musst ein Platzauswählen."),
     message: z.string().min(10, "Die Nachricht muss mindestens 10 Zeichen enthalten."),
 });
 
-const ContactForm = () => {
+const ReportError = () => {
     const router = useRouter();
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            name: "",
             email: "",
+            place: 0,
             message: "",
         },
     });
@@ -45,19 +46,6 @@ const ContactForm = () => {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <FormField
                     control={form.control}
-                    name="name"
-                    render={({field}) => (
-                        <FormItem>
-                            <FormLabel>Name</FormLabel>
-                            <FormControl>
-                                <Input placeholder="Ihr Name" {...field} />
-                            </FormControl>
-                            <FormMessage/>
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
                     name="email"
                     render={({field}) => (
                         <FormItem>
@@ -71,22 +59,34 @@ const ContactForm = () => {
                 />
                 <FormField
                     control={form.control}
-                    name="message"
+                    name="place"
                     render={({field}) => (
                         <FormItem>
-                            <FormLabel>Nachricht</FormLabel>
+                            <FormLabel>Platzname</FormLabel>
                             <FormControl>
-                                <Textarea placeholder="Ihr Anliegen" {...field} />
+                                <ChoosePlace {...field} />
                             </FormControl>
                             <FormMessage/>
                         </FormItem>
                     )}
                 />
-
+                <FormField
+                    control={form.control}
+                    name="message"
+                    render={({field}) => (
+                        <FormItem>
+                            <FormLabel>Problembeschreibung</FormLabel>
+                            <FormControl>
+                                <Textarea placeholder="Das Problem einmal beschreiben" {...field} />
+                            </FormControl>
+                            <FormMessage/>
+                        </FormItem>
+                    )}
+                />
                 <Button type="submit">Nachricht senden</Button>
             </form>
         </Form>
     );
 };
 
-export default ContactForm;
+export default ReportError;

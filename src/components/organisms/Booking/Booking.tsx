@@ -2,7 +2,7 @@ import React from "react";
 import Place, {sizeTyp, statusTyp} from "@/components/atoms/Place/Place";
 
 export interface PlaceElement {
-    id: string | number;
+    id: number;
     name: string;
     status: statusTyp;
     size: sizeTyp;
@@ -32,7 +32,7 @@ const Booking = ({places}: BookingProps): React.ReactElement => {
                     </li>
                 </ul>
             </div>
-            <div className="grid grid-flow-col gap-2">
+            <div className="grid grid-cols-10 gap-8 items-center">
                 {places.map((place) => (
                     <Place
                         key={place.id}
