@@ -5,6 +5,7 @@ const Dashboard = (): React.ReactElement => {
         <div>
             <h1>Dashboard</h1>
             <p>Welcome to the Dashboard!</p>
+            Test
         </div>
     );
 }
