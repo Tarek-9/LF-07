@@ -1,98 +1,103 @@
 'use client';
 
-import React from "react";
+import React from 'react';
 import {Button} from "@/components/ui/button";
 import {
     Tooltip,
     TooltipContent,
     TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from "@/components/ui/tooltip";
 import {
     Dialog,
-    DialogClose,
+    DialogTrigger,
     DialogContent,
-    DialogDescription,
-    DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
+    DialogDescription,
+    DialogFooter,
+    DialogClose,
 } from "@/components/ui/dialog";
 
-type statusTyp = 'frei' | 'belegt' | 'fehler' | 'wartung'; // TODO: change to frei | belegt | reserviert
-type sizeTyp = 'small' | 'medium' | 'large';
+export type statusTyp = 'frei' | 'belegt' | 'reserviert';
+export type sizeTyp = 'small' | 'medium' | 'large';
 
 interface PlaceProps {
-    placeName: string,
-    status: statusTyp,
-    size: sizeTyp
+    placeName: string;
+    status: statusTyp;
+    size: sizeTyp;
 }
 
-const Place = ({placeName, status, size}: PlaceProps): React.ReactElement => {
-    const setPlaceStyles = (status: statusTyp): string => {
-        switch (status) {
+const Place = ({placeName, status, size}: PlaceProps) => {
+    const setPlaceStyles = (s: statusTyp) => {
+        switch (s) {
             case 'frei':
-                return 'bg-green-900';
+                return 'bg-[#338bd2]';
             case 'belegt':
-                return 'bg-gray-500';
-            case 'fehler':
+                return 'bg-[#8a8a8a]';
+            case 'reserviert':
                 return 'bg-red-900';
-            case 'wartung':
-                return 'bg-purple-900';
+            default:
+                return '';
         }
-    }
+    };
 
-    const setSize = (size: sizeTyp): string => {
-        switch (size) {
+    const setSize = (sz: sizeTyp) => {
+        switch (sz) {
             case 'small':
                 return 'w-16';
             case 'medium':
                 return 'w-24';
             case 'large':
-                return 'w-30';
+                return 'w-32';
+            default:
+                return '';
         }
-    }
+    };
 
-    const onSubmit = (event: React.FormEvent) => {
-        event.preventDefault();
-        console.log("submit");
-    }
+    const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        console.log('submit');
+    };
 
     return (
         <Dialog>
-            <form>
-                <DialogTrigger asChild className='h-full p-0 hover:cursor-pointer hover:opacity-80'>
-                    <Tooltip>
-                        <TooltipTrigger asChild className='h-full p-0'>
-                            <Button variant="ghost" className='hover:cursor-pointer'>
-                                <div
-                                    className={`h-16 text-white flex flex-col justify-center items-center align-middle ${setPlaceStyles(status)} ${setSize(size)}`}>
-                                    <span>{placeName}</span>
-                                </div>
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <span>{size}</span>
-                        </TooltipContent>
-                    </Tooltip>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                        <DialogTitle>{`Platz ${placeName} buchen`}</DialogTitle>
-                        <DialogDescription>
-                            Hier kannst du den Platz {placeName} buchen.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <DialogClose asChild>
-                            <Button variant="outline" className='hover:cursor-pointer'>abbrechen</Button>
-                        </DialogClose>
-                        <Button type="submit" className='hover:cursor-pointer' onClick={onSubmit}>Buchen</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </form>
-        </Dialog>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <DialogTrigger asChild>
+                        <Button variant="ghost"
+                                className={`h-16 text-white flex hover:bg-amber-600 ${setPlaceStyles(status)} ${setSize(size)}`}>
+                            <span>{placeName}</span>
+                        </Button>
+                    </DialogTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                    <span>{size}</span>
+                </TooltipContent>
+            </Tooltip>
 
-    );
-}
+            {status === 'frei' ? (
+                <DialogContent className="sm:max-w-[425px]">
+                    <form onSubmit={onSubmit}>
+                        <DialogHeader>
+                            <DialogTitle>{`Platz ${placeName} buchen`}</DialogTitle>
+                            <DialogDescription>
+                                Hier kannst du den Platz {placeName} buchen.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button variant="outline">Abbrechen</Button>
+                            </DialogClose>
+                            <Button type="submit">Buchen</Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>) : (
+                <DialogContent>
+                    <DialogTitle>Dieser Platz kann nicht reserviert</DialogTitle>
+                </DialogContent>)
+            }
+        </Dialog>
+    )
+};
 
 export default Place;

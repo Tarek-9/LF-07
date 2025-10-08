@@ -4,7 +4,14 @@ import {zodResolver} from "@hookform/resolvers/zod";
 import {useForm} from "react-hook-form";
 import {z} from "zod";
 import {Button} from "@/components/ui/button";
-import {Form, FormControl, FormField, FormItem, FormLabel, FormMessage} from "@/components/ui/form";
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from "@/components/ui/form";
 import {Input} from "@/components/ui/input";
 import {Textarea} from "@/components/ui/textarea";
 
@@ -26,41 +33,55 @@ const ContactForm = () => {
 
     const onSubmit = (values: z.infer<typeof formSchema>) => {
         console.log(values);
-    }
+    };
 
     return (
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <FormField
                     control={form.control}
                     name="name"
                     render={({field}) => (
-                        <>
-                            <FormItem>
-                                <FormLabel>E-Mail</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="Ihre E-Mail" {...field} />
-                                </FormControl>
-                            </FormItem>
-                            <FormItem>
-                                <FormLabel>Spint</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="Ihre E-Mail" {...field} />
-                                </FormControl>
-                            </FormItem>
-                            <FormItem>
-                                <FormLabel>Anliegen</FormLabel>
-                                <FormControl>
-                                    <Textarea placeholder="Ihr Anliegen" {...field} />
-                                </FormControl>
-                            </FormItem>
-                        </>
+                        <FormItem>
+                            <FormLabel>Name</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Ihr Name" {...field} />
+                            </FormControl>
+                            <FormMessage/>
+                        </FormItem>
                     )}
                 />
+                <FormField
+                    control={form.control}
+                    name="email"
+                    render={({field}) => (
+                        <FormItem>
+                            <FormLabel>E-Mail</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Ihre E-Mail-Adresse" {...field} />
+                            </FormControl>
+                            <FormMessage/>
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="message"
+                    render={({field}) => (
+                        <FormItem>
+                            <FormLabel>Nachricht</FormLabel>
+                            <FormControl>
+                                <Textarea placeholder="Ihr Anliegen" {...field} />
+                            </FormControl>
+                            <FormMessage/>
+                        </FormItem>
+                    )}
+                />
+
                 <Button type="submit">Nachricht senden</Button>
             </form>
         </Form>
     );
-}
+};
 
 export default ContactForm;
