@@ -14,8 +14,8 @@ router.get('/lockers', ctrl.listLockers);
 router.get('/lockers/:id/status', ctrl.getLockerStatus);
 
 // Aktionen (reservieren/belegen/freigeben) → Auth nötig
-router.post('/lockers/:id/reserve', requireAuth, ctrl.reserveLocker);
-router.post('/lockers/:id/occupy', requireAuth, ctrl.occupyLocker);
-router.post('/lockers/:id/release', requireAuth, ctrl.releaseLocker);
+router.post('/lockers/:id/reserve', ctrl.reserveLocker);
+router.post('/lockers/:id/occupy', ctrl.occupyLocker);
+router.post('/lockers/:id/release', ctrl.releaseLocker);
 
 module.exports = router;
