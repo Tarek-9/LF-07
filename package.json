@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "main": "index.js",
-  "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
-    "start": "next start",
+"scripts": {
+    "dev": "concurrently \"node server.js\" \"next dev\"",
+    "build": "next build",
+    "start": "concurrently \"node server.js\" \"next start\"",
     "lint": "eslint",
     "deploy": "git push raspi main"
   },
@@ -26,16 +26,17 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "concurrently": "^9.2.1",
+    "express": "^5.1.0",
     "lucide-react": "^0.544.0",
+    "mysql2": "^3.15.2",
     "next": "15.5.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-hook-form": "^7.63.0",
     "react-hot-toast": "^2.6.0",
     "tailwind-merge": "^3.3.1",
-    "zod": "^4.1.11",
-    "express": "^5.1.0",
-    "mysql2": "^3.15.2"
+    "zod": "^4.1.11"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
