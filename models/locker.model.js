@@ -6,8 +6,8 @@ const { updateLockerLed } = require('../services/arduino.service');
 
 const pool = mysql.createPool({
     host: process.env.DB_HOST || '127.0.0.1',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASS || '',
+    user: 'test_user', // <--- NEUER BENUTZER
+    password: 'testpassword', // <--- NEUES PASSWORT
     database: process.env.DB_NAME || 'app_core',
     waitForConnections: true,
     connectionLimit: 10,
