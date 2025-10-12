@@ -166,18 +166,3 @@ UNLOCK TABLES;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
 -- Dump completed on 2025-10-05 16:37:53
-
-
--- 1. ZWEI TESTBENUTZER HINZUFÜGEN (Wichtig für die Auth-Middleware)
-INSERT INTO benutzer (id, username) VALUES 
-(101, 'TestUser101'), 
-(102, 'TestUser102');
-
--- 2. ZWEI SPINDE HINZUFÜGEN (Für die Locker-ID-Tests)
--- Spind 1: ID 1 (Der Standard, den wir testen)
-INSERT INTO spind (id, nummer, status) 
-VALUES (1, 101, 'frei'); 
-
--- Spind 2: ID 2 (Ein weiterer Spind)
-INSERT INTO spind (id, nummer, status) 
-VALUES (2, 102, 'frei');
