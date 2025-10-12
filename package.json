@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "main": "index.js",
-"scripts": {
+  "scripts": {
     "dev": "concurrently \"node server.js\" \"next dev\"",
     "build": "next build",
     "start": "concurrently \"node server.js\" \"next start\"",
@@ -35,6 +35,7 @@
     "react-dom": "19.1.0",
     "react-hook-form": "^7.63.0",
     "react-hot-toast": "^2.6.0",
+    "serialport": "^13.0.0",
     "tailwind-merge": "^3.3.1",
     "zod": "^4.1.11"
   },
