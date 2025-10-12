@@ -1,0 +1,48 @@
+// src/models/user.model.js
+const { pool } = require('../db/mysql');
+
+async function createUser({ username, email, password }) {
+    const [res] = await pool.query(
+        `INSERT INTO users (username, email, password)
+     VALUES (:username, :email, :password)`,
+        { username, email, password }
+    );
+    return getById(res.insertId);
+}
+
+async function getById(id) {
+    const [rows] = await pool.query(`SELECT * FROM users WHERE id = :id`, { id });
+    return rows[0] || null;
+}
+
+async function findByUsername(username) {
+    const [rows] = await pool.query(
+        `SELECT * FROM users WHERE username = :username`,
+        { username }
+    );
+    return rows[0] || null;
+}
+
+async function findByEmail(email) {
+    const [rows] = await pool.query(
+        `SELECT * FROM users WHERE email = :email`,
+        { email }
+    );
+    return rows[0] || null;
+}
+
+async function findByUsernameAndEmail({ username, email }) {
+    const [rows] = await pool.query(
+        `SELECT * FROM users WHERE username = :username AND email = :email`,
+        { username, email }
+    );
+    return rows[0] || null;
+}
+
+module.exports = {
+    createUser,
+    getById,
+    findByUsername,
+    findByEmail,
+    findByUsernameAndEmail,
+};
