@@ -34,7 +34,7 @@ CREATE TABLE `aktion` (
   KEY `fk_aktion_spind` (`spind_id`),
   CONSTRAINT `fk_aktion_benutzer` FOREIGN KEY (`benutzer_id`) REFERENCES `benutzer` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_aktion_spind` FOREIGN KEY (`spind_id`) REFERENCES `spind` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci ;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -62,7 +62,7 @@ CREATE TABLE `benutzer` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `rfid_code` (`rfid_code`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci ;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -90,7 +90,7 @@ CREATE TABLE `display` (
   PRIMARY KEY (`id`),
   KEY `fk_display_spind` (`spind_id`),
   CONSTRAINT `fk_display_spind` FOREIGN KEY (`spind_id`) REFERENCES `spind` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci ;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -118,7 +118,7 @@ CREATE TABLE `sensor` (
   PRIMARY KEY (`id`),
   KEY `fk_sensor_spind` (`spind_id`),
   CONSTRAINT `fk_sensor_spind` FOREIGN KEY (`spind_id`) REFERENCES `spind` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci ;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -144,7 +144,7 @@ CREATE TABLE `spind` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `nummer` (`nummer`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci ;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -166,3 +166,17 @@ UNLOCK TABLES;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
 -- Dump completed on 2025-10-05 16:37:53
+
+-- 1. ZWEI TESTBENUTZER HINZUFÜGEN (Wichtig für die Auth-Middleware)
+INSERT INTO benutzer (id, username) VALUES 
+(101, 'TestUser101'), 
+(102, 'TestUser102');
+
+-- 2. ZWEI SPINDE HINZUFÜGEN (Für die Locker-ID-Tests)
+-- Spind 1: ID 1 (Der Standard, den wir testen)
+INSERT INTO spind (id, nummer, status) 
+VALUES (1, 101, 'frei'); 
+
+-- Spind 2: ID 2 (Ein weiterer Spind)
+INSERT INTO spind (id, nummer, status) 
+VALUES (2, 102, 'frei');
