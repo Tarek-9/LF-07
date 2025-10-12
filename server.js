@@ -12,7 +12,7 @@ app.use('/api', displayRoute);
 app.use('/api', lockerRoute);
 app.use('/api', sensorRoute);
 
-const PORT = process.env.PORT || 3001;
+const PORT = 3001;
 app.listen(PORT, () => {
     console.log(`Listening on port ${PORT}`);
 })
