@@ -4,10 +4,32 @@ const router = express.Router();
 const ctrl = require('../controllers/locker.controller');
 
 // Optional: Auth-Middleware, die req.user setzt
+/*
 const requireAuth = (req, res, next) => {
   if (!req.user)
     return res.status(401).json({ message: 'Nicht authentifiziert.' });
   next();
+};
+*/
+
+const requireAuth = (req, res, next) => {
+    // #######################################################
+    // # TEMPORÄRER BYPASS FÜR ARDUINO-TEST (MUSS ENTFERNT WERDEN)
+    // #######################################################
+    
+    // Setzt einen temporären Benutzer mit der ID, die Sie testen wollen (ID 101)
+    // Die Model-Funktionen benötigen nur diese ID.
+    req.user = { id: 101, username: 'TestUserBypass' };
+    
+    // Wir rufen direkt next() auf, um die Middleware zu umgehen.
+    next(); 
+    // #######################################################
+    
+    // Originaler, kommentierter Code (MUSS im finalen Projekt wiederhergestellt werden)
+    /*
+    if (!req.user) return res.status(401).json({ message: 'Nicht authentifiziert.' });
+    next();
+    */
 };
 
 // Übersichten
