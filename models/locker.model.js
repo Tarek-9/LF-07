@@ -17,9 +17,9 @@ const pool = mysql.createPool({
 
 async function getById(id, conn = pool) {
     const [rows] = await conn.query(
-        `SELECT * FROM lockers WHERE id = :id`,
-        { id }
-    );
+        `SELECT * FROM spind WHERE id = :id FOR UPDATE`, // KORREKTUR
+        { id: lockerId }
+);
     return rows[0] || null;
 }
 
