@@ -1,5 +1,8 @@
 // src/models/locker.model.js
 const mysql = require('mysql2/promise');
+// HINZUGEFÜGT: Importiert den Arduino Service. 
+// Pfad: Geht von 'models/' eine Ebene hoch (..) und dann in den Ordner 'services/'.
+const { updateLockerLed } = require('../services/arduino.service');
 
 const pool = mysql.createPool({
     host: process.env.DB_HOST || '127.0.0.1',
@@ -99,6 +102,9 @@ async function reserveLocker({ lockerId, userId, minutes = 15 }) {
             { id: lockerId, userId, minutes }
         );
 
+        // ARDUINO AKTUALISIERUNG BEI ERFOLG:
+        updateLockerLed('reserviert'); 
+        
         await conn.commit();
         return { ok: true };
     } catch (e) {
@@ -144,6 +150,9 @@ async function occupyLocker({ lockerId, userId }) {
          WHERE id = :id`,
                 { id: lockerId, userId }
             );
+            // ARDUINO AKTUALISIERUNG BEI ERFOLG:
+            updateLockerLed('belegt'); 
+            
             await conn.commit();
             return { ok: true };
         }
@@ -163,6 +172,9 @@ async function occupyLocker({ lockerId, userId }) {
          WHERE id = :id`,
                 { id: lockerId, userId }
             );
+            // ARDUINO AKTUALISIERUNG BEI ERFOLG:
+            updateLockerLed('belegt'); 
+            
             await conn.commit();
             return { ok: true };
         }
@@ -211,6 +223,9 @@ async function releaseLocker({ lockerId, userId, force = false }) {
        WHERE id = :id`,
             { id: lockerId }
         );
+
+        // ARDUINO AKTUALISIERUNG BEI ERFOLG:
+        updateLockerLed('frei'); 
 
         await conn.commit();
         return { ok: true };
