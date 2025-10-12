@@ -1,14 +1,14 @@
-// src/models/locker.model.js
+// models/locker.model.js (KORRIGIERT FÜR SPIND und BENUTZER)
+
 const mysql = require('mysql2/promise');
-// HINZUGEFÜGT: Importiert den Arduino Service. 
-// Pfad: Geht von 'models/' eine Ebene hoch (..) und dann in den Ordner 'services/'.
 const { updateLockerLed } = require('../services/arduino.service');
 
 const pool = mysql.createPool({
-    host: process.env.DB_HOST || '127.0.0.1',
-    user: 'test_user', // <--- NEUER BENUTZER
-    password: 'testpassword', // <--- NEUES PASSWORT
-    database: process.env.DB_NAME || 'app_core',
+    host: '127.0.0.1',
+    user: 'test_user', 
+    password: 'testpassword', 
+    // Der Datenbankname muss smart_locker_system sein, da dies in der Konsole erstellt wurde
+    database: 'smart_locker_system', 
     waitForConnections: true,
     connectionLimit: 10,
     namedPlaceholders: true,
@@ -17,21 +17,24 @@ const pool = mysql.createPool({
 
 async function getById(id, conn = pool) {
     const [rows] = await conn.query(
-        `SELECT * FROM spind WHERE id = :id FOR UPDATE`, // KORREKTUR
-        { id: lockerId }
-);
+        // TABLE: spind
+        `SELECT * FROM spind WHERE id = :id`, 
+        { id: id } // Korrigiert: Nutzt 'id' aus den Argumenten
+    );
     return rows[0] || null;
 }
 
 async function getByNumber(number, conn = pool) {
     const [rows] = await conn.query(
-        `SELECT * FROM spind WHERE number = :number`,
+        // TABLE: spind
+        `SELECT * FROM spind WHERE nummer = :number`,
         { number }
     );
     return rows[0] || null;
 }
 
 async function getAll({ status, onlyAvailable }, conn = pool) {
+    // TABLE: spind
     let sql = `SELECT * FROM spind`;
     const params = {};
     const where = [];
@@ -45,7 +48,7 @@ async function getAll({ status, onlyAvailable }, conn = pool) {
         where.push(`(status = 'frei' OR (status = 'reserviert' AND reserved_until IS NOT NULL AND reserved_until < UTC_TIMESTAMP()))`);
     }
     if (where.length) sql += ` WHERE ` + where.join(' AND ');
-    sql += ` ORDER BY number ASC`;
+    sql += ` ORDER BY nummer ASC`;
 
     const [rows] = await conn.query(sql, params);
     return rows;
@@ -53,9 +56,10 @@ async function getAll({ status, onlyAvailable }, conn = pool) {
 
 async function createMany(numbers, conn = pool) {
     if (!numbers.length) return [];
+    // TABLE: spind
     const values = numbers.map(n => [n, 'frei', null, null, null]);
     const [result] = await conn.query(
-        `INSERT INTO spind (number, status, reserved_by, reserved_until, occupied_by) VALUES ?`,
+        `INSERT INTO spind (nummer, status, reserved_by, reserved_until, occupied_by) VALUES ?`,
         [values]
     );
     return result.insertId;
@@ -69,7 +73,7 @@ async function reserveLocker({ lockerId, userId, minutes = 15 }) {
     try {
         await conn.beginTransaction();
 
-        // Lock row
+        // Lock row (TABLE: spind)
         const [rows] = await conn.query(
             `SELECT * FROM spind WHERE id = :id FOR UPDATE`,
             { id: lockerId }
@@ -80,7 +84,8 @@ async function reserveLocker({ lockerId, userId, minutes = 15 }) {
             return { ok: false, code: 'NOT_FOUND' };
         }
 
-        // abgelaufene Reservierung als "frei" betrachten
+        // ... (Logik zur Statusprüfung)
+
         const isExpired =
             row.status === 'reserviert' &&
             row.reserved_until &&
@@ -93,6 +98,7 @@ async function reserveLocker({ lockerId, userId, minutes = 15 }) {
             return { ok: false, code: 'NOT_AVAILABLE', currentStatus: row.status };
         }
 
+        // UPDATE (TABLE: spind)
         const [upd] = await conn.query(
             `UPDATE spind
        SET status = 'reserviert',
@@ -104,7 +110,7 @@ async function reserveLocker({ lockerId, userId, minutes = 15 }) {
 
         // ARDUINO AKTUALISIERUNG BEI ERFOLG:
         updateLockerLed('reserviert'); 
-        
+
         await conn.commit();
         return { ok: true };
     } catch (e) {
@@ -123,6 +129,7 @@ async function occupyLocker({ lockerId, userId }) {
     try {
         await conn.beginTransaction();
 
+        // SELECT (TABLE: spind)
         const [rows] = await conn.query(
             `SELECT * FROM spind WHERE id = :id FOR UPDATE`,
             { id: lockerId }
@@ -133,14 +140,15 @@ async function occupyLocker({ lockerId, userId }) {
             return { ok: false, code: 'NOT_FOUND' };
         }
 
-        // Reservierung abgelaufen?
+        // ... (Logik zur Statusprüfung)
+
         const isExpired =
             row.status === 'reserviert' &&
             row.reserved_until &&
             new Date(row.reserved_until).getTime() < Date.now();
 
         if (row.status === 'frei' || isExpired) {
-            // Direkt belegen
+            // Direkt belegen (UPDATE spind)
             const [upd] = await conn.query(
                 `UPDATE spind
          SET status = 'belegt',
@@ -152,7 +160,7 @@ async function occupyLocker({ lockerId, userId }) {
             );
             // ARDUINO AKTUALISIERUNG BEI ERFOLG:
             updateLockerLed('belegt'); 
-            
+
             await conn.commit();
             return { ok: true };
         }
@@ -162,7 +170,7 @@ async function occupyLocker({ lockerId, userId }) {
                 await conn.rollback();
                 return { ok: false, code: 'RESERVED_BY_OTHER' };
             }
-            // Reserviert von gleichem User → belegen
+            // Reserviert von gleichem User → belegen (UPDATE spind)
             await conn.query(
                 `UPDATE spind
          SET status = 'belegt',
@@ -174,7 +182,7 @@ async function occupyLocker({ lockerId, userId }) {
             );
             // ARDUINO AKTUALISIERUNG BEI ERFOLG:
             updateLockerLed('belegt'); 
-            
+
             await conn.commit();
             return { ok: true };
         }
@@ -199,6 +207,7 @@ async function releaseLocker({ lockerId, userId, force = false }) {
     try {
         await conn.beginTransaction();
 
+        // SELECT (TABLE: spind)
         const [rows] = await conn.query(
             `SELECT * FROM spind WHERE id = :id FOR UPDATE`,
             { id: lockerId }
@@ -214,6 +223,7 @@ async function releaseLocker({ lockerId, userId, force = false }) {
             return { ok: false, code: 'NOT_OWNER' };
         }
 
+        // UPDATE (TABLE: spind)
         await conn.query(
             `UPDATE spind
        SET status = 'frei',
