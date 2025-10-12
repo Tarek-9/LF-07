@@ -1,4 +1,4 @@
-// src/models/display.model.js
+// models/display.model.js (KORRIGIERT FÜR SQL-TABELLEN)
 const { pool } = require('../db/mysql');
 
 const VALID_TYPES = new Set(['7segment', 'lcd1602']);
@@ -8,11 +8,13 @@ function isValidType(typ) {
 }
 
 async function getById(id, conn = pool) {
+    // TABLE: display
     const [rows] = await conn.query(`SELECT * FROM display WHERE id = :id`, { id });
     return rows[0] || null;
 }
 
 async function getBySpindId(spindId, conn = pool) {
+    // TABLE: display
     const [rows] = await conn.query(
         `SELECT * FROM display WHERE spind_id = :spindId ORDER BY id ASC`,
         { spindId }
@@ -37,7 +39,8 @@ async function listAll({ typ, spindId } = {}, conn = pool) {
 async function create({ typ, inhalt = null, spind_id }, conn = pool) {
     if (!isValidType(typ)) throw Object.assign(new Error('INVALID_TYPE'), { code: 'INVALID_TYPE' });
 
-    const [res] = await conn.query(
+    // TABLE: display
+    const [res] = await pool.query(
         `INSERT INTO display (typ, inhalt, spind_id) VALUES (:typ, :inhalt, :spind_id)`,
         { typ, inhalt, spind_id }
     );
@@ -57,16 +60,19 @@ async function update({ id, typ, inhalt, spind_id }, conn = pool) {
 
     if (!sets.length) return getById(id, conn);
 
+    // TABLE: display
     await conn.query(`UPDATE display SET ${sets.join(', ')} WHERE id = :id`, params);
     return getById(id, conn);
 }
 
 async function updateContent({ id, inhalt }, conn = pool) {
+    // TABLE: display
     await conn.query(`UPDATE display SET inhalt = :inhalt WHERE id = :id`, { id, inhalt });
     return getById(id, conn);
 }
 
 async function remove(id, conn = pool) {
+    // TABLE: display
     const [res] = await conn.query(`DELETE FROM display WHERE id = :id`, { id });
     return res.affectedRows > 0;
 }
@@ -83,6 +89,7 @@ async function upsertBySpindAndType({ spind_id, typ, inhalt = null }) {
     try {
         await conn.beginTransaction();
 
+        // TABLE: display
         const [rows] = await conn.query(
             `SELECT * FROM display WHERE spind_id = :spind_id AND typ = :typ ORDER BY id ASC LIMIT 1`,
             { spind_id, typ }
@@ -90,12 +97,14 @@ async function upsertBySpindAndType({ spind_id, typ, inhalt = null }) {
         let row = rows[0];
 
         if (!row) {
+            // TABLE: display
             const [res] = await conn.query(
                 `INSERT INTO display (typ, inhalt, spind_id) VALUES (:typ, :inhalt, :spind_id)`,
                 { typ, inhalt, spind_id }
             );
             row = await getById(res.insertId, conn);
         } else {
+            // TABLE: display
             await conn.query(
                 `UPDATE display SET inhalt = :inhalt WHERE id = :id`,
                 { id: row.id, inhalt }

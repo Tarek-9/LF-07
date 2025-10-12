@@ -1,5 +1,4 @@
-// models/locker.model.js (KORRIGIERT FÜR SPIND und BENUTZER)
-
+// models/locker.model.js (FINAL KORRIGIERT)
 const mysql = require('mysql2/promise');
 const { updateLockerLed } = require('../services/arduino.service');
 
@@ -7,7 +6,6 @@ const pool = mysql.createPool({
     host: '127.0.0.1',
     user: 'test_user', 
     password: 'testpassword', 
-    // Der Datenbankname muss smart_locker_system sein, da dies in der Konsole erstellt wurde
     database: 'smart_locker_system', 
     waitForConnections: true,
     connectionLimit: 10,
@@ -17,25 +15,22 @@ const pool = mysql.createPool({
 
 async function getById(id, conn = pool) {
     const [rows] = await conn.query(
-        // TABLE: spind
         `SELECT * FROM spind WHERE id = :id`, 
-        { id: id } // Korrigiert: Nutzt 'id' aus den Argumenten
+        { id: id }
     );
     return rows[0] || null;
 }
 
 async function getByNumber(number, conn = pool) {
     const [rows] = await conn.query(
-        // TABLE: spind
-        `SELECT * FROM spind WHERE nummer = :number`,
+        `SELECT * FROM spind WHERE nummer = :number`, // NUTZT 'nummer'
         { number }
     );
     return rows[0] || null;
 }
 
 async function getAll({ status, onlyAvailable }, conn = pool) {
-    // TABLE: spind
-    let sql = `SELECT * FROM spind`;
+    let sql = `SELECT * FROM spind`; // NUTZT 'spind'
     const params = {};
     const where = [];
 
@@ -48,7 +43,7 @@ async function getAll({ status, onlyAvailable }, conn = pool) {
         where.push(`(status = 'frei' OR (status = 'reserviert' AND reserved_until IS NOT NULL AND reserved_until < UTC_TIMESTAMP()))`);
     }
     if (where.length) sql += ` WHERE ` + where.join(' AND ');
-    sql += ` ORDER BY nummer ASC`;
+    sql += ` ORDER BY nummer ASC`; // NUTZT 'nummer'
 
     const [rows] = await conn.query(sql, params);
     return rows;
@@ -56,10 +51,10 @@ async function getAll({ status, onlyAvailable }, conn = pool) {
 
 async function createMany(numbers, conn = pool) {
     if (!numbers.length) return [];
-    // TABLE: spind
-    const values = numbers.map(n => [n, 'frei', null, null, null]);
+    // HINWEIS: Hier ist die Spaltenreihenfolge zu beachten, der Code geht von 5 Spalten aus
+    const values = numbers.map(n => [n, 'frei', null, null, null]); 
     const [result] = await conn.query(
-        `INSERT INTO spind (nummer, status, reserved_by, reserved_until, occupied_by) VALUES ?`,
+        `INSERT INTO spind (nummer, status, reserved_by, reserved_until, occupied_by) VALUES ?`, // NUTZT 'nummer'
         [values]
     );
     return result.insertId;
@@ -151,7 +146,7 @@ async function occupyLocker({ lockerId, userId }) {
             // Direkt belegen (UPDATE spind)
             const [upd] = await conn.query(
                 `UPDATE spind
-         SET status = 'besetzt',
+         SET status = 'besetzt', // KORRIGIERT: NUTZT 'besetzt'
              occupied_by = :userId,
              reserved_by = NULL,
              reserved_until = NULL
@@ -159,7 +154,7 @@ async function occupyLocker({ lockerId, userId }) {
                 { id: lockerId, userId }
             );
             // ARDUINO AKTUALISIERUNG BEI ERFOLG:
-            updateLockerLed('besetzt'); 
+            updateLockerLed('besetzt'); // KORRIGIERT: NUTZT 'besetzt'
 
             await conn.commit();
             return { ok: true };
@@ -173,7 +168,7 @@ async function occupyLocker({ lockerId, userId }) {
             // Reserviert von gleichem User → belegen (UPDATE spind)
             await conn.query(
                 `UPDATE spind
-         SET status = 'besetzt',
+         SET status = 'besetzt', // KORRIGIERT: NUTZT 'besetzt'
              occupied_by = :userId,
              reserved_by = NULL,
              reserved_until = NULL
@@ -181,7 +176,7 @@ async function occupyLocker({ lockerId, userId }) {
                 { id: lockerId, userId }
             );
             // ARDUINO AKTUALISIERUNG BEI ERFOLG:
-            updateLockerLed('besetzt'); 
+            updateLockerLed('besetzt'); // KORRIGIERT: NUTZT 'besetzt'
 
             await conn.commit();
             return { ok: true };
