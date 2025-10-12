@@ -25,14 +25,14 @@ async function getById(id, conn = pool) {
 
 async function getByNumber(number, conn = pool) {
     const [rows] = await conn.query(
-        `SELECT * FROM lockers WHERE number = :number`,
+        `SELECT * FROM spind WHERE number = :number`,
         { number }
     );
     return rows[0] || null;
 }
 
 async function getAll({ status, onlyAvailable }, conn = pool) {
-    let sql = `SELECT * FROM lockers`;
+    let sql = `SELECT * FROM spind`;
     const params = {};
     const where = [];
 
@@ -55,7 +55,7 @@ async function createMany(numbers, conn = pool) {
     if (!numbers.length) return [];
     const values = numbers.map(n => [n, 'frei', null, null, null]);
     const [result] = await conn.query(
-        `INSERT INTO lockers (number, status, reserved_by, reserved_until, occupied_by) VALUES ?`,
+        `INSERT INTO spind (number, status, reserved_by, reserved_until, occupied_by) VALUES ?`,
         [values]
     );
     return result.insertId;
@@ -71,7 +71,7 @@ async function reserveLocker({ lockerId, userId, minutes = 15 }) {
 
         // Lock row
         const [rows] = await conn.query(
-            `SELECT * FROM lockers WHERE id = :id FOR UPDATE`,
+            `SELECT * FROM spind WHERE id = :id FOR UPDATE`,
             { id: lockerId }
         );
         const row = rows[0];
@@ -94,7 +94,7 @@ async function reserveLocker({ lockerId, userId, minutes = 15 }) {
         }
 
         const [upd] = await conn.query(
-            `UPDATE lockers
+            `UPDATE spind
        SET status = 'reserviert',
            reserved_by = :userId,
            reserved_until = DATE_ADD(UTC_TIMESTAMP(), INTERVAL :minutes MINUTE)
@@ -124,7 +124,7 @@ async function occupyLocker({ lockerId, userId }) {
         await conn.beginTransaction();
 
         const [rows] = await conn.query(
-            `SELECT * FROM lockers WHERE id = :id FOR UPDATE`,
+            `SELECT * FROM spind WHERE id = :id FOR UPDATE`,
             { id: lockerId }
         );
         const row = rows[0];
@@ -142,7 +142,7 @@ async function occupyLocker({ lockerId, userId }) {
         if (row.status === 'frei' || isExpired) {
             // Direkt belegen
             const [upd] = await conn.query(
-                `UPDATE lockers
+                `UPDATE spind
          SET status = 'belegt',
              occupied_by = :userId,
              reserved_by = NULL,
@@ -164,7 +164,7 @@ async function occupyLocker({ lockerId, userId }) {
             }
             // Reserviert von gleichem User → belegen
             await conn.query(
-                `UPDATE lockers
+                `UPDATE spind
          SET status = 'belegt',
              occupied_by = :userId,
              reserved_by = NULL,
@@ -200,7 +200,7 @@ async function releaseLocker({ lockerId, userId, force = false }) {
         await conn.beginTransaction();
 
         const [rows] = await conn.query(
-            `SELECT * FROM lockers WHERE id = :id FOR UPDATE`,
+            `SELECT * FROM spind WHERE id = :id FOR UPDATE`,
             { id: lockerId }
         );
         const row = rows[0];
@@ -215,7 +215,7 @@ async function releaseLocker({ lockerId, userId, force = false }) {
         }
 
         await conn.query(
-            `UPDATE lockers
+            `UPDATE spind
        SET status = 'frei',
            reserved_by = NULL,
            reserved_until = NULL,
