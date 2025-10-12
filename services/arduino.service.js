@@ -3,7 +3,7 @@
 const { SerialPort } = require('serialport');
 
 // --- KONFIGURATION ---
-const ARDUINO_PORT = '/dev/ttyACM0'; // Beispiel: '/dev/ttyACM0' oder '/dev/ttyUSB0'
+const ARDUINO_PORT = '/dev/ttyACM0';
 const BAUD_RATE = 9600;
 const TIMEOUT_MS = 50; 
 
@@ -16,7 +16,6 @@ const DEFAULT_LED_PIN = 6; // Gelb/Default
 
 try {
     port = new SerialPort({ path: ARDUINO_PORT, baudRate: BAUD_RATE });
-    
     port.on('open', () => console.log('Arduino Serial Port geöffnet.'));
     port.on('error', (err) => console.error('Arduino Serial Fehler:', err.message));
     
