@@ -122,7 +122,7 @@ async function reserveLocker({ lockerId, userId, minutes = 15 }) {
 }
 
 /**
- * Belegen (aus reserviert ODER frei möglich). Wenn frei→belegt direkt; wenn reserviert→nur gleicher User.
+ * Belegen (aus reserviert ODER frei möglich). Wenn frei→besetzt direkt; wenn reserviert→nur gleicher User.
  */
 async function occupyLocker({ lockerId, userId }) {
     const conn = await pool.getConnection();
@@ -151,7 +151,7 @@ async function occupyLocker({ lockerId, userId }) {
             // Direkt belegen (UPDATE spind)
             const [upd] = await conn.query(
                 `UPDATE spind
-         SET status = 'belegt',
+         SET status = 'besetzt',
              occupied_by = :userId,
              reserved_by = NULL,
              reserved_until = NULL
@@ -159,7 +159,7 @@ async function occupyLocker({ lockerId, userId }) {
                 { id: lockerId, userId }
             );
             // ARDUINO AKTUALISIERUNG BEI ERFOLG:
-            updateLockerLed('belegt'); 
+            updateLockerLed('besetzt'); 
 
             await conn.commit();
             return { ok: true };
@@ -173,7 +173,7 @@ async function occupyLocker({ lockerId, userId }) {
             // Reserviert von gleichem User → belegen (UPDATE spind)
             await conn.query(
                 `UPDATE spind
-         SET status = 'belegt',
+         SET status = 'besetzt',
              occupied_by = :userId,
              reserved_by = NULL,
              reserved_until = NULL
@@ -181,13 +181,13 @@ async function occupyLocker({ lockerId, userId }) {
                 { id: lockerId, userId }
             );
             // ARDUINO AKTUALISIERUNG BEI ERFOLG:
-            updateLockerLed('belegt'); 
+            updateLockerLed('besetzt'); 
 
             await conn.commit();
             return { ok: true };
         }
 
-        if (row.status === 'belegt') {
+        if (row.status === 'besetzt') {
             await conn.rollback();
             return { ok: false, code: 'ALREADY_OCCUPIED', occupiedBy: row.occupied_by };
         }
@@ -218,7 +218,7 @@ async function releaseLocker({ lockerId, userId, force = false }) {
             return { ok: false, code: 'NOT_FOUND' };
         }
 
-        if (row.status === 'belegt' && row.occupied_by !== userId && !force) {
+        if (row.status === 'besetzt' && row.occupied_by !== userId && !force) {
             await conn.rollback();
             return { ok: false, code: 'NOT_OWNER' };
         }
