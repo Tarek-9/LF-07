@@ -1,17 +1,16 @@
-// models/locker.model.js (FINAL KORRIGIERT & ARCHITEKTONISCH SAUBER)
+// models/locker.model.js (FINAL KORRIGIERT & SAUBER)
 
 const mysql = require('mysql2/promise');
 const fs = require('fs/promises'); 
 const path = require('path');
-// Stellt sicher, dass der Pfad zu services/arduino.service korrekt ist
 const { updateLockerLed } = require('../services/arduino.service');
 
 // --- HILFSVARIABLEN ---
 const SQL_SCHEMA_PATH = path.join(__dirname, '..', 'smart_locker_system.sql');
 let pool = null; 
 
-// Konfiguration aus Umgebungsvariablen (für RPi/XAMPP)
-// HINWEIS: Diese Variablen müssen hier sein, um den Pool beim Modulladen zu erstellen
+// Die Konfiguration wird aus server.js geholt, wenn sie benötigt wird.
+// Wir definieren temporär die Konstanten hier.
 const DB_HOST = process.env.DB_HOST || '127.0.0.1';
 const DB_USER = process.env.DB_USER || 'root'; 
 const DB_PASS = process.env.DB_PASS || ''; 
@@ -22,8 +21,8 @@ const DB_NAME = process.env.DB_NAME || 'smart_locker_system';
 // 1. POOL ERSTELLEN (Synchron beim Laden des Moduls)
 // =================================================================
 
-// Der Pool wird sofort mit den Konfigurationsdetails erstellt, um den 'null'-Fehler zu vermeiden.
-// Die Datenbank-Initialisierung (Erstellen/Füllen) erfolgt weiterhin über server.js.
+// Wir erstellen den Pool synchron mit den Fallback-Werten. 
+// Die tatsächliche Verbindung wird bei getConnection() geprüft.
 try {
     pool = mysql.createPool({
         host: DB_HOST,
@@ -36,7 +35,7 @@ try {
         timezone: 'Z',
     });
 } catch (e) {
-    // Wenn die Verbindung fehlschlägt, setzen wir den Pool auf null und lassen die Initialisierung in server.js die Fehler abfangen.
+    // Bei einem Fehler wird der Pool auf null gesetzt, um den Absturz zu verhindern.
     pool = null; 
 }
 
@@ -47,15 +46,16 @@ try {
 
 /**
  * Führt den DB-Check und das Schema-Laden aus.
+ * Die korrigierten DB_USER/DB_PASS kommen von server.js
  */
-async function initializeDatabase() {
+async function initializeDatabase({ DB_HOST, DB_USER, DB_PASS, DB_NAME }) {
     console.log(`[DB INIT] Versuche, Datenbank '${DB_NAME}' zu initialisieren...`);
 
-    // HINWEIS: Wir verwenden temporär root/kein Passwort, um die DB zu erstellen
+    // 1. Verbindung ohne spezifische Datenbank
     const rootConnection = await mysql.createConnection({
         host: DB_HOST,
-        user: DB_USER,
-        password: DB_PASS,
+        user: DB_USER, // <- NUTZT DIE KORRIGIERTEN WERTE
+        password: DB_PASS, // <- NUTZT DIE KORRIGIERTEN WERTE
         multipleStatements: true,
     });
 
@@ -63,7 +63,7 @@ async function initializeDatabase() {
         await rootConnection.execute(`CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;`);
         console.log(`[DB INIT] Datenbank '${DB_NAME}' existiert oder wurde erstellt.`);
 
-        // SQL-Schema laden und ausführen
+        // 2. SQL-Schema laden und ausführen
         const sqlSchema = await fs.readFile(SQL_SCHEMA_PATH, 'utf-8');
         const fullSchemaSql = `USE \`${DB_NAME}\`;\n${sqlSchema}`;
 
@@ -72,11 +72,18 @@ async function initializeDatabase() {
     } finally {
         await rootConnection.end();
     }
-    
-    // Nach erfolgreicher Initialisierung muss das Model wissen, dass es den Pool verwenden kann.
-    // In diesem Fall muss der Pool neu erstellt werden, um die Datenbank-Verbindung zu aktualisieren.
-    // DA DIES ZU KOMPLEX IST, wird die synchron erstellte Variable 'pool' beibehalten, 
-    // und die App nutzt diese.
+
+    // 3. Pool neu erstellen, um sicherzustellen, dass die Verbindung nach dem Init läuft
+    pool = mysql.createPool({
+        host: DB_HOST,
+        user: DB_USER,
+        password: DB_PASS,
+        database: DB_NAME, 
+        waitForConnections: true,
+        connectionLimit: 10,
+        namedPlaceholders: true,
+        timezone: 'Z',
+    });
     console.log("[DB INIT] Datenbankpool erfolgreich verifiziert.");
 }
 

@@ -1,4 +1,4 @@
-// server.js (FINAL KORRIGIERT FÜR DB-ZUGRIFF)
+// server.js (FINAL KORRIGIERT & ARCHITEKTONISCH SAUBER)
 
 const express = require('express');
 const mysql = require('mysql2/promise');
@@ -7,51 +7,30 @@ const path = require('path');
 const app = express();
 
 // Wir importieren die initializeDatabase Funktion jetzt aus dem Model
-const { initializeDatabase } = require('./models/locker.model'); 
+const lockerModel = require('./models/locker.model');
+const { initializeDatabase } = lockerModel; 
 
 // --- DB INITIALISIERUNGS-KONFIGURATION ---
 const DB_HOST = process.env.DB_HOST || '127.0.0.1';
-// WICHTIG: Setzt die TEST-ANMELDEDATEN, die in der DB erstellt wurden, als Standard
-const DB_USER = process.env.DB_USER || 'root'; 
-const DB_PASS = process.env.DB_PASS || ''; 
+// Wir verwenden hier die Umgebungsvariablen als primäre Quelle
 const DB_NAME = process.env.DB_NAME || 'smart_locker_system'; 
-const SQL_SCHEMA_PATH = path.join(__dirname, 'smart_locker_system.sql');
 
-// --- DIE KORRIGIERTE INITIALISIERUNGS-FUNKTION (Muss hier sein, um die DB zu erstellen) ---
-async function initializeDatabaseWrapper() {
-  console.log(
-    `[DB INIT] Versuche, Datenbank '${DB_NAME}' zu initialisieren...`
-  );
 
-  // 1. Verbindung herstellen (nutzt die korrigierten TEST-CREDENTIALS)
-  const rootConnection = await mysql.createConnection({
-    host: DB_HOST,
-    user: DB_USER,
-    password: DB_PASS,
-    multipleStatements: true,
-  });
-
-  try {
-    // 2. Datenbank erstellen und Schema laden
-    await rootConnection.execute(
-      `CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;`
-    );
-    console.log(
-      `[DB INIT] Datenbank '${DB_NAME}' existiert oder wurde erstellt.`
-    );
-
-    const sqlSchema = await fs.readFile(SQL_SCHEMA_PATH, 'utf-8');
-    const fullSchemaSql = `USE \`${DB_NAME}\`;\n${sqlSchema}`;
-
-    await rootConnection.query(fullSchemaSql);
-    console.log('[DB INIT] Tabellenschema und Testdaten erfolgreich geladen.');
-  } finally {
-    await rootConnection.end();
-  }
+// --- FUNKTION ZUM SETZEN DER DB-LOGIN-DATEN ---
+// Diese Logik ist notwendig, um zwischen Pi und Laptop zu unterscheiden.
+function getDbCredentials() {
+    // Wenn DB_USER/DB_PASS über ENV gesetzt sind (z.B. auf dem RPi), nutze diese.
+    if (process.env.DB_USER && process.env.DB_PASS) {
+        return { user: process.env.DB_USER, pass: process.env.DB_PASS };
+    }
+    
+    // Fallback: Laptop (XAMPP Standard)
+    // Wenn keine Umgebungsvariablen gesetzt sind, nutze 'root' ohne Passwort.
+    return { user: 'root', pass: '' };
 }
 
 
-// --- ANWENDUNGS-MIDDLEWARE START ---
+// --- RESTLICHE MIDDLEWARE & ROUTER BLEIBEN GLEICH ---
 
 // 0) ultra-kurz ohne /api, um ALLES zu umgehen
 app.get('/__ping', (_req, res) => res.type('text').send('ok'));
@@ -95,10 +74,16 @@ app.use('/api', sensorRoute);
 const PORT = 3008;
 
 async function startServer() {
-    // ZUERST: Datenbank prüfen und Schema laden
-    await initializeDatabaseWrapper(); 
+    // 1. ZUERST: Datenbank prüfen und Schema laden (Mit dynamischen Credentials)
+    const creds = getDbCredentials();
+    await initializeDatabase({ 
+        DB_HOST, 
+        DB_USER: creds.user, 
+        DB_PASS: creds.pass, 
+        DB_NAME 
+    }); 
 
-    // DANN: Server starten
+    // 2. DANN: Server starten
     app.listen(PORT, () => console.log(`[Express] Läuft auf Port ${PORT}`));
 }
 
