@@ -150,6 +150,13 @@ CREATE TABLE `spind` (
 --
 -- Dumping data for table `spind`
 --
+CREATE TABLE cardnumber (
+`id` INT NOT NULL AUTO_INCREMENT,
+`nummer` VARCHAR(64) NOT NULL,
+PRIMARY KEY (`id`),
+UNIQUE KEY `uk_cardnumber_nummer` (`nummer`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 
 LOCK TABLES `spind` WRITE;
 /*!40000 ALTER TABLE `spind` DISABLE KEYS */;
