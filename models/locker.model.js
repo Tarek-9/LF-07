@@ -1,9 +1,8 @@
-// models/locker.model.js (FINALE KORREKTUR: ASYNCHRONIE BEHOBEN)
+// models/locker.model.js (FINALE KORREKTUR: POOL-PRÜFUNG ENTFERNT)
 
 const mysql = require('mysql2/promise');
 const fs = require('fs/promises'); 
 const path = require('path');
-// Stellt sicher, dass der Pfad zu services/arduino.service korrekt ist
 const { updateLockerLed } = require('../services/arduino.service');
 
 // --- HILFSVARIABLEN ---
@@ -61,7 +60,8 @@ async function initializeDatabase({ DB_HOST, DB_USER, DB_PASS, DB_NAME }) {
 // MODEL FUNKTIONEN
 // =================================================================
 
-// WICHTIG: Die Pool-Prüfung wurde hier und in allen folgenden Funktionen entfernt!
+// HINWEIS: Die Prüfung if (!pool) throw new Error('Database not initialized'); wurde entfernt.
+// Der Pool wird nun in der getConnection() automatisch erzeugt oder darauf gewartet.
 
 async function getById(id, conn = pool) {
     const [rows] = await conn.query(`SELECT * FROM spind WHERE id = :id`, { id: id });
@@ -102,7 +102,7 @@ async function createMany(numbers, conn = pool) {
 }
 
 async function reserveLocker({ lockerId, userId, minutes = 15 }) {
-    const conn = await pool.getConnection();
+    const conn = await pool.getConnection(); // <- Jetzt auf pool zugreifen
     try {
         await conn.beginTransaction();
 
