@@ -154,7 +154,6 @@ async function reserveLocker({ lockerId, userId, minutes = 15 }) {
         const [upd] = await conn.query(
             `UPDATE spind
        SET status = 'reserviert',
-           reserved_by = :userId,
            reserved_until = DATE_ADD(UTC_TIMESTAMP(), INTERVAL :minutes MINUTE)
        WHERE id = :id`,
             { id: lockerId, userId, minutes }
