@@ -12,8 +12,8 @@ const { initializeDatabase } = require('./models/locker.model');
 // --- DB INITIALISIERUNGS-KONFIGURATION ---
 const DB_HOST = process.env.DB_HOST || '127.0.0.1';
 // WICHTIG: Setzt die TEST-ANMELDEDATEN, die in der DB erstellt wurden, als Standard
-const DB_USER = process.env.DB_USER || 'test_user'; 
-const DB_PASS = process.env.DB_PASS || 'testpassword'; 
+const DB_USER = process.env.DB_USER || 'root'; 
+const DB_PASS = process.env.DB_PASS || ''; 
 const DB_NAME = process.env.DB_NAME || 'smart_locker_system'; 
 const SQL_SCHEMA_PATH = path.join(__dirname, 'smart_locker_system.sql');
 
