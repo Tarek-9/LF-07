@@ -8,7 +8,7 @@
     "build": "next build --no-lint",
     "start": "concurrently \"node server.js\" \"next start -p 3004\"",
     "server": "node server.js",
-    "server:dev": "cross-env PORT=3008 DB_NAME=auth nodemon server.js",
+    "server:dev": "cross-env PORT=3008 DB_NAME=smart_locker_system nodemon server.js",
     "dev": "concurrently \"node server.js\" \"next dev -p 3004\"",
     "lint": "eslint",
     "deploy": "git push raspi main"
