@@ -1,40 +1,80 @@
-// models/locker.model.js (BEREINIGT)
+// models/locker.model.js (FINAL KORRIGIERT & STRUKTURIERT)
 
 const mysql = require('mysql2/promise');
+const fs = require('fs/promises'); 
+const path = require('path');
 const { updateLockerLed } = require('../services/arduino.service');
 
-// Der Pool wird JETZT DIREKT HIER erstellt, da die Datenbank in server.js existiert.
-const pool = mysql.createPool({
-    host: '127.0.0.1', 
-    user: 'test_user', 
-    password: 'testpassword', 
-    database: 'smart_locker_system', 
-    waitForConnections: true,
-    connectionLimit: 10,
-    namedPlaceholders: true,
-    timezone: 'Z',
-});
+// --- HILFSVARIABLEN ---
+const SQL_SCHEMA_PATH = path.join(__dirname, '..', 'smart_locker_system.sql');
+let pool = null;
 
-// ... (ALLE FUNKTIONEN BLEIBEN GLEICH, NUR DER POOL IST ANDERS DEFINIERT) ...
+// =================================================================
+// DB INITIALISIERUNG
+// =================================================================
+
+/**
+ * Erstellt die DB, lädt das Schema und setzt den Pool.
+ * Die Konfiguration kommt jetzt direkt aus server.js.
+ */
+async function initializeDatabase({ DB_HOST, DB_USER, DB_PASS, DB_NAME }) {
+    console.log(`[DB INIT] Versuche, Datenbank '${DB_NAME}' zu initialisieren...`);
+
+    // 1. Verbindung ohne spezifische Datenbank
+    const rootConnection = await mysql.createConnection({
+        host: DB_HOST,
+        user: DB_USER,
+        password: DB_PASS,
+        multipleStatements: true,
+    });
+
+    try {
+        await rootConnection.execute(`CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;`);
+        console.log(`[DB INIT] Datenbank '${DB_NAME}' existiert oder wurde erstellt.`);
+
+        // 2. SQL-Schema laden und ausführen
+        const sqlSchema = await fs.readFile(SQL_SCHEMA_PATH, 'utf-8');
+        const fullSchemaSql = `USE \`${DB_NAME}\`;\n${sqlSchema}`;
+
+        await rootConnection.query(fullSchemaSql);
+        console.log('[DB INIT] Tabellenschema und Testdaten erfolgreich geladen.');
+    } finally {
+        await rootConnection.end();
+    }
+
+    // 3. Pool mit der korrekten Datenbank erstellen
+    pool = mysql.createPool({
+        host: DB_HOST,
+        user: DB_USER,
+        password: DB_PASS,
+        database: DB_NAME, 
+        waitForConnections: true,
+        connectionLimit: 10,
+        namedPlaceholders: true,
+        timezone: 'Z',
+    });
+    console.log("[DB INIT] Datenbankpool erfolgreich erstellt.");
+}
+
+// =================================================================
+// MODEL FUNKTIONEN
+// =================================================================
 
 async function getById(id, conn = pool) {
-    const [rows] = await conn.query(
-        `SELECT * FROM spind WHERE id = :id`, 
-        { id: id }
-    );
+    if (!pool) throw new Error('Database not initialized');
+    const [rows] = await conn.query(`SELECT * FROM spind WHERE id = :id`, { id: id });
     return rows[0] || null;
 }
 
 async function getByNumber(number, conn = pool) {
-    const [rows] = await conn.query(
-        `SELECT * FROM spind WHERE nummer = :number`, // NUTZT 'nummer'
-        { number }
-    );
+    if (!pool) throw new Error('Database not initialized');
+    const [rows] = await conn.query(`SELECT * FROM spind WHERE nummer = :number`, { number });
     return rows[0] || null;
 }
 
 async function getAll({ status, onlyAvailable }, conn = pool) {
-    let sql = `SELECT * FROM spind`; // NUTZT 'spind'
+    if (!pool) throw new Error('Database not initialized');
+    let sql = `SELECT * FROM spind`;
     const params = {};
     const where = [];
 
@@ -43,61 +83,45 @@ async function getAll({ status, onlyAvailable }, conn = pool) {
         params.status = status;
     }
     if (onlyAvailable) {
-        // "verfügbar" == frei ODER reserviert abgelaufen
         where.push(`(status = 'frei' OR (status = 'reserviert' AND reserved_until IS NOT NULL AND reserved_until < UTC_TIMESTAMP()))`);
     }
     if (where.length) sql += ` WHERE ` + where.join(' AND ');
-    sql += ` ORDER BY nummer ASC`; // NUTZT 'nummer'
+    sql += ` ORDER BY nummer ASC`;
 
     const [rows] = await conn.query(sql, params);
     return rows;
 }
 
 async function createMany(numbers, conn = pool) {
-    if (!numbers.length) return [];
-    // HINWEIS: Hier ist die Spaltenreihenfolge zu beachten, der Code geht von 5 Spalten aus
+    if (!pool) throw new Error('Database not initialized');
     const values = numbers.map(n => [n, 'frei', null, null, null]); 
     const [result] = await conn.query(
-        `INSERT INTO spind (nummer, status, reserved_by, reserved_until, occupied_by) VALUES ?`, // NUTZT 'nummer'
+        `INSERT INTO spind (nummer, status, reserved_by, reserved_until, occupied_by) VALUES ?`,
         [values]
     );
     return result.insertId;
 }
 
-/**
- * Reservierung: atomar per SELECT ... FOR UPDATE
- */
 async function reserveLocker({ lockerId, userId, minutes = 15 }) {
+    if (!pool) throw new Error('Database not initialized');
     const conn = await pool.getConnection();
     try {
         await conn.beginTransaction();
 
-        // Lock row (TABLE: spind)
-        const [rows] = await conn.query(
-            `SELECT * FROM spind WHERE id = :id FOR UPDATE`,
-            { id: lockerId }
-        );
+        const [rows] = await conn.query(`SELECT * FROM spind WHERE id = :id FOR UPDATE`, { id: lockerId });
         const row = rows[0];
         if (!row) {
             await conn.rollback();
             return { ok: false, code: 'NOT_FOUND' };
         }
-
-        // ... (Logik zur Statusprüfung)
-
-        const isExpired =
-            row.status === 'reserviert' &&
-            row.reserved_until &&
-            new Date(row.reserved_until).getTime() < Date.now();
-
+        // ... (Logik zur Statusprüfung) ...
+        const isExpired = row.status === 'reserviert' && row.reserved_until && new Date(row.reserved_until).getTime() < Date.now();
         const effectiveStatus = isExpired ? 'frei' : row.status;
-
         if (effectiveStatus !== 'frei') {
             await conn.rollback();
             return { ok: false, code: 'NOT_AVAILABLE', currentStatus: row.status };
         }
 
-        // UPDATE (TABLE: spind)
         const [upd] = await conn.query(
             `UPDATE spind
        SET status = 'reserviert',
@@ -107,9 +131,7 @@ async function reserveLocker({ lockerId, userId, minutes = 15 }) {
             { id: lockerId, userId, minutes }
         );
 
-        // ARDUINO AKTUALISIERUNG BEI ERFOLG:
         updateLockerLed('reserviert'); 
-
         await conn.commit();
         return { ok: true };
     } catch (e) {
@@ -120,77 +142,55 @@ async function reserveLocker({ lockerId, userId, minutes = 15 }) {
     }
 }
 
-/**
- * Belegen (aus reserviert ODER frei möglich). Wenn frei→besetzt direkt; wenn reserviert→nur gleicher User.
- */
 async function occupyLocker({ lockerId, userId }) {
+    if (!pool) throw new Error('Database not initialized');
     const conn = await pool.getConnection();
     try {
         await conn.beginTransaction();
-
-        // SELECT (TABLE: spind)
-        const [rows] = await conn.query(
-            `SELECT * FROM spind WHERE id = :id FOR UPDATE`,
-            { id: lockerId }
-        );
+        const [rows] = await conn.query(`SELECT * FROM spind WHERE id = :id FOR UPDATE`, { id: lockerId });
         const row = rows[0];
         if (!row) {
             await conn.rollback();
             return { ok: false, code: 'NOT_FOUND' };
         }
-
-        // ... (Logik zur Statusprüfung)
-
-        const isExpired =
-            row.status === 'reserviert' &&
-            row.reserved_until &&
-            new Date(row.reserved_until).getTime() < Date.now();
-
+        // ... (Logik zur Statusprüfung) ...
+        const isExpired = row.status === 'reserviert' && row.reserved_until && new Date(row.reserved_until).getTime() < Date.now();
         if (row.status === 'frei' || isExpired) {
-            // Direkt belegen (UPDATE spind)
             const [upd] = await conn.query(
                 `UPDATE spind
-         SET status = 'besetzt', // KORRIGIERT: NUTZT 'besetzt'
+         SET status = 'besetzt',
              occupied_by = :userId,
              reserved_by = NULL,
              reserved_until = NULL
          WHERE id = :id`,
                 { id: lockerId, userId }
             );
-            // ARDUINO AKTUALISIERUNG BEI ERFOLG:
-            updateLockerLed('besetzt'); // KORRIGIERT: NUTZT 'besetzt'
-
+            updateLockerLed('besetzt'); 
             await conn.commit();
             return { ok: true };
         }
-
         if (row.status === 'reserviert') {
             if (row.reserved_by !== userId) {
                 await conn.rollback();
                 return { ok: false, code: 'RESERVED_BY_OTHER' };
             }
-            // Reserviert von gleichem User → belegen (UPDATE spind)
             await conn.query(
                 `UPDATE spind
-         SET status = 'besetzt', // KORRIGIERT: NUTZT 'besetzt'
+         SET status = 'besetzt',
              occupied_by = :userId,
              reserved_by = NULL,
              reserved_until = NULL
          WHERE id = :id`,
                 { id: lockerId, userId }
             );
-            // ARDUINO AKTUALISIERUNG BEI ERFOLG:
-            updateLockerLed('besetzt'); // KORRIGIERT: NUTZT 'besetzt'
-
+            updateLockerLed('besetzt'); 
             await conn.commit();
             return { ok: true };
         }
-
         if (row.status === 'besetzt') {
             await conn.rollback();
             return { ok: false, code: 'ALREADY_OCCUPIED', occupiedBy: row.occupied_by };
         }
-
         await conn.rollback();
         return { ok: false, code: 'UNKNOWN_STATE' };
     } catch (e) {
@@ -202,15 +202,12 @@ async function occupyLocker({ lockerId, userId }) {
 }
 
 async function releaseLocker({ lockerId, userId, force = false }) {
+    if (!pool) throw new Error('Database not initialized');
     const conn = await pool.getConnection();
     try {
         await conn.beginTransaction();
 
-        // SELECT (TABLE: spind)
-        const [rows] = await conn.query(
-            `SELECT * FROM spind WHERE id = :id FOR UPDATE`,
-            { id: lockerId }
-        );
+        const [rows] = await conn.query(`SELECT * FROM spind WHERE id = :id FOR UPDATE`, { id: lockerId });
         const row = rows[0];
         if (!row) {
             await conn.rollback();
@@ -222,7 +219,6 @@ async function releaseLocker({ lockerId, userId, force = false }) {
             return { ok: false, code: 'NOT_OWNER' };
         }
 
-        // UPDATE (TABLE: spind)
         await conn.query(
             `UPDATE spind
        SET status = 'frei',
@@ -233,9 +229,7 @@ async function releaseLocker({ lockerId, userId, force = false }) {
             { id: lockerId }
         );
 
-        // ARDUINO AKTUALISIERUNG BEI ERFOLG:
         updateLockerLed('frei'); 
-
         await conn.commit();
         return { ok: true };
     } catch (e) {
@@ -247,8 +241,8 @@ async function releaseLocker({ lockerId, userId, force = false }) {
 }
 
 module.exports = {
-    pool, 
-    // ACHTUNG: initializeDatabase wird NICHT mehr exportiert!
+    pool,
+    initializeDatabase,
     getById,
     getByNumber,
     getAll,
