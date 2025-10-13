@@ -11,8 +11,8 @@ let pool = null;
 
 // Konfiguration aus Umgebungsvariablen (für RPi/XAMPP)
 const DB_HOST = process.env.DB_HOST || '127.0.0.1';
-const DB_USER = process.env.DB_USER || 'test_user'; 
-const DB_PASS = process.env.DB_PASS || 'testpassword'; 
+const DB_USER = process.env.DB_USER || 'root'; 
+const DB_PASS = process.env.DB_PASS || ''; 
 const DB_NAME = process.env.DB_NAME || 'smart_locker_system';
 
 
@@ -20,10 +20,51 @@ const DB_NAME = process.env.DB_NAME || 'smart_locker_system';
 // DB INITIALISIERUNG
 // =================================================================
 
-// ... (InitializeDatabase Funktion bleibt gleich) ...
+/**
+ * Führt den DB-Check und das Schema-Laden aus.
+ */
+async function initializeDatabase({ DB_HOST, DB_USER, DB_PASS, DB_NAME }) {
+    console.log(`[DB INIT] Versuche, Datenbank '${DB_NAME}' zu initialisieren...`);
+
+    // 1. Verbindung ohne spezifische Datenbank
+    const rootConnection = await mysql.createConnection({
+        host: DB_HOST,
+        user: DB_USER,
+        password: DB_PASS,
+        multipleStatements: true,
+    });
+
+    try {
+        await rootConnection.execute(`CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;`);
+        console.log(`[DB INIT] Datenbank '${DB_NAME}' existiert oder wurde erstellt.`);
+
+        // 2. SQL-Schema laden und ausführen
+        const sqlSchema = await fs.readFile(SQL_SCHEMA_PATH, 'utf-8');
+        const fullSchemaSql = `USE \`${DB_NAME}\`;\n${sqlSchema}`;
+
+        await rootConnection.query(fullSchemaSql);
+        console.log('[DB INIT] Tabellenschema und Testdaten erfolgreich geladen.');
+    } finally {
+        await rootConnection.end();
+    }
+
+    // 3. Pool mit der korrekten Datenbank erstellen
+    pool = mysql.createPool({
+        host: DB_HOST,
+        user: DB_USER,
+        password: DB_PASS,
+        database: DB_NAME, 
+        waitForConnections: true,
+        connectionLimit: 10,
+        namedPlaceholders: true,
+        timezone: 'Z',
+    });
+    console.log("[DB INIT] Datenbankpool erfolgreich verifiziert.");
+}
+
 
 // =================================================================
-// MODEL FUNKTIONEN (KORRIGIERTE SPALTEN)
+// MODEL FUNKTIONEN
 // =================================================================
 
 async function getById(id, conn = pool) {
@@ -85,13 +126,12 @@ async function reserveLocker({ lockerId, userId, minutes = 15 }) {
             return { ok: false, code: 'NOT_AVAILABLE', currentStatus: row.status };
         }
 
-        // UPDATE (TABLE: spind)
         const [upd] = await conn.query(
             `UPDATE spind
        SET status = 'reserviert',
            reserved_by = :userId,
            reserved_until = DATE_ADD(UTC_TIMESTAMP(), INTERVAL :minutes MINUTE)
-       WHERE id = :id`, // KORREKT: Setzt reserved_until
+       WHERE id = :id`,
             { id: lockerId, userId, minutes }
         );
 
@@ -117,7 +157,6 @@ async function occupyLocker({ lockerId, userId }) {
             return { ok: false, code: 'NOT_FOUND' };
         }
         
-        // KORREKT: Nutzt reserved_until
         const isExpired = row.status === 'reserviert' && row.reserved_until && new Date(row.reserved_until).getTime() < Date.now();
         if (row.status === 'frei' || isExpired) {
             const [upd] = await conn.query(
@@ -125,7 +164,7 @@ async function occupyLocker({ lockerId, userId }) {
          SET status = 'besetzt',
              occupied_by = :userId,
              reserved_by = NULL,
-             reserved_until = NULL // KORREKT: Setzt reserved_until auf NULL
+             reserved_until = NULL 
          WHERE id = :id`,
                 { id: lockerId, userId }
             );
@@ -133,11 +172,6 @@ async function occupyLocker({ lockerId, userId }) {
             await conn.commit();
             return { ok: true };
         }
-        // ... (Restlicher occupyLocker Code, der reserved_until auf NULL setzt) ...
-        
-        // ... (Dieser Teil des Codes ist nur zur Vervollständigung. 
-        // Wichtig ist, dass alle Model-Funktionen auf 'reserved_until' und 'occupied_by' aktualisiert wurden.)
-
         if (row.status === 'reserviert') {
             if (row.reserved_by !== userId) {
                 await conn.rollback();
@@ -156,8 +190,12 @@ async function occupyLocker({ lockerId, userId }) {
             await conn.commit();
             return { ok: true };
         }
-        // ... (Restlicher Code) ...
-
+        if (row.status === 'besetzt') {
+            await conn.rollback();
+            return { ok: false, code: 'ALREADY_OCCUPIED', occupiedBy: row.occupied_by };
+        }
+        await conn.rollback();
+        return { ok: false, code: 'UNKNOWN_STATE' };
     } catch (e) {
         await conn.rollback();
         throw e;
@@ -187,7 +225,7 @@ async function releaseLocker({ lockerId, userId, force = false }) {
             `UPDATE spind
        SET status = 'frei',
            reserved_by = NULL,
-           reserved_until = NULL, // KORREKT: Setzt reserved_until auf NULL
+           reserved_until = NULL,
            occupied_by = NULL
        WHERE id = :id`,
             { id: lockerId }
