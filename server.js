@@ -21,14 +21,10 @@ const DB_NAME = process.env.DB_NAME || 'smart_locker_system';
 // --- FUNKTION ZUM SETZEN DER DB-LOGIN-DATEN ---
 // Diese Logik ist notwendig, um zwischen Pi und Laptop zu unterscheiden.
 function getDbCredentials() {
-    // Wenn DB_USER/DB_PASS über ENV gesetzt sind (z.B. auf dem RPi), nutze diese.
-    if (process.env.DB_USER && process.env.DB_PASS) {
-        return { user: process.env.DB_USER, pass: process.env.DB_PASS };
-    }
-    
-    // Fallback: Laptop (XAMPP Standard)
-    // Wenn keine Umgebungsvariablen gesetzt sind, nutze 'root' ohne Passwort.
-    return { user: 'root', pass: '' };
+    return { 
+        user: 'test_user', 
+        pass: 'testpassword' 
+    };
 }
 
 
@@ -76,16 +72,19 @@ app.use('/api', sensorRoute);
 const PORT = 3008;
 
 async function startServer() {
-    // 1. ZUERST: Datenbank prüfen und Schema laden (Mit dynamischen Credentials)
-    const creds = getDbCredentials();
+    const creds = getDbCredentials(); // Hole die funktionierenden Anmeldedaten
+    
+    // ZUERST: Datenbank prüfen und Schema laden (mit den test_user-Daten)
+    // Wir verwenden die Funktion initializeDatabase aus locker.model.js
     await initializeDatabase({ 
         DB_HOST, 
-        DB_USER: creds.user, 
-        DB_PASS: creds.pass, 
+        DB_USER: creds.user, // ÜBERGIBT 'test_user'
+        DB_PASS: creds.pass, // ÜBERGIBT 'testpassword'
         DB_NAME 
     }); 
 
-    // 2. DANN: Server starten
+    // DANN: Server starten
+    const PORT = 3008;
     app.listen(PORT, () => console.log(`[Express] Läuft auf Port ${PORT}`));
 }
 
