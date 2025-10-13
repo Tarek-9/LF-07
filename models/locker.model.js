@@ -6,8 +6,8 @@ const { updateLockerLed } = require('../services/arduino.service');
 // Der Pool wird JETZT DIREKT HIER erstellt, da die Datenbank in server.js existiert.
 const pool = mysql.createPool({
     host: '127.0.0.1', 
-    user: 'root', 
-    password: '', 
+    user: 'test_user', 
+    password: 'testpassword', 
     database: 'smart_locker_system', 
     waitForConnections: true,
     connectionLimit: 10,
