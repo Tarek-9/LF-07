@@ -150,6 +150,8 @@ CREATE TABLE `spind` (
 --
 -- Dumping data for table `spind`
 --
+
+DROP TABLE IF EXISTS `cardnumber`;
 CREATE TABLE cardnumber (
 `id` INT NOT NULL AUTO_INCREMENT,
 `nummer` VARCHAR(64) NOT NULL,
