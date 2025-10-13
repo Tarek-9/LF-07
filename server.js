@@ -72,7 +72,7 @@ app.use('/api', sensorRoute);
 const PORT = 3008;
 
 async function startServer() {
-    const creds = getDbCredentials(); // Hole die funktionierenden Anmeldedaten
+    const creds = { user: DB_USER, pass: DB_PASS };
     
     // ZUERST: Datenbank prüfen und Schema laden (mit den test_user-Daten)
     // Wir verwenden die Funktion initializeDatabase aus locker.model.js

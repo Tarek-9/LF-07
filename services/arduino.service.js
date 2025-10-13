@@ -10,10 +10,10 @@ const TIMEOUT_MS = 50;
 let port = null;
 
 // PIN-KONSTANTEN (Die neue korrekte Zuordnung für die Logik)
-const RED_LED_PIN = 2; 
+const RED_LED_PIN = 2; // ROT: BESETZT
 const YELLOW_LED_PIN = 3;  // GELB: RESERVIERT
 const GREEN_LED_PIN = 4;   // GRÜN: FREI
-    // ROT: BESETZT
+    
 const DEFAULT_LED_PIN = 6; // BLAU/DEFAULT (Falls verwendet)
 
 try {
