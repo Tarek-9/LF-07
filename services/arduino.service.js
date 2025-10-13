@@ -30,12 +30,7 @@ try {
 /**
  * Sendet einen Befehl an den Arduino, um eine LED zu steuern.
  */
-function setLedState(pin, state) {
-    if (!port || !port.isOpen) {
-        console.warn(`[Arduino] Befehl verworfen: Port nicht bereit für Pin ${pin}.`);
-        return;
-    }
-    
+function setLedState(pin, state) {    
     const stateStr = state ? 'HIGH' : 'LOW';
     const command = `SET:${pin}:${stateStr}\n`;
     
