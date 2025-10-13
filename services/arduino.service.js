@@ -1,20 +1,22 @@
-// src/services/arduino.service.js
+// src/services/arduino.service.js (KORRIGIERT: FINALE PIN-ZUORDNUNG)
 
 const { SerialPort } = require('serialport');
 
 // --- KONFIGURATION ---
-const ARDUINO_PORT = '/dev/ttyACM0'; // Beispiel: '/dev/ttyACM0' oder '/dev/ttyUSB0'
+const ARDUINO_PORT = '/dev/ttyACM0'; // HIER PFAD PRÜFEN UND ggf. ANPASSEN!
 const BAUD_RATE = 9600;
 const TIMEOUT_MS = 50; 
 
 let port = null;
 
-// Pin-Konstanten
-const RED_LED_PIN = 2;
-const GREEN_LED_PIN = 4;
-const DEFAULT_LED_PIN = 6; // Gelb/Default
+// PIN-KONSTANTEN (Die neue korrekte Zuordnung für die Logik)
+const GREEN_LED_PIN = 2;   // GRÜN: FREI
+const YELLOW_LED_PIN = 3;  // GELB: RESERVIERT
+const RED_LED_PIN = 4;     // ROT: BESETZT
+const DEFAULT_LED_PIN = 6; // BLAU/DEFAULT (Falls verwendet)
 
 try {
+    // Initialisierung des seriellen Ports
     port = new SerialPort({ path: ARDUINO_PORT, baudRate: BAUD_RATE });
     
     port.on('open', () => console.log('Arduino Serial Port geöffnet.'));
@@ -52,27 +54,28 @@ function setLedState(pin, state) {
  * Steuert die Status-LEDs basierend auf dem Schließfach-Status.
  */
 function updateLockerLed(status) {
-    // 1. Alle spezifischen Status-LEDs ausschalten
+    // 1. Alle Status-LEDs ausschalten
     setLedState(RED_LED_PIN, false); 
+    setLedState(YELLOW_LED_PIN, false);
     setLedState(GREEN_LED_PIN, false); 
     setLedState(DEFAULT_LED_PIN, false); 
 
     switch (status) {
         case 'reserviert':
-            // Rot (Kanal 2) an
-            setLedState(RED_LED_PIN, true);
-            console.log('LED Status: Rot (Reserviert) aktiv.');
+            // GELB (Kanal 3) an
+            setLedState(YELLOW_LED_PIN, true);
+            console.log('LED Status: Gelb (Reserviert) aktiv.');
             break;
         case 'frei':
-            // Grün (Kanal 4) UND Default (Kanal 6) an (wie gewünscht)
+            // GRÜN (Kanal 2) UND Default (Kanal 6) an
             setLedState(GREEN_LED_PIN, true);
             setLedState(DEFAULT_LED_PIN, true); 
             console.log('LED Status: Grün (Frei) & Default (Bereit) aktiv.');
             break;
-        case 'belegt':
-            // Zustand "belegt": Nur Default (Kanal 6) an
-            setLedState(DEFAULT_LED_PIN, true);
-            console.log('LED Status: Belegt - Nur Default (Bereit) aktiv.');
+        case 'besetzt':
+            // ROT (Kanal 4) an
+            setLedState(RED_LED_PIN, true);
+            console.log('LED Status: Rot (Belegt) aktiv.');
             break;
         default:
             // Unbekannter Status: Nur Default (Kanal 6) an
