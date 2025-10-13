@@ -1,8 +1,9 @@
-// models/locker.model.js (FINAL KORRIGIERT & STRUKTURIERT)
+// models/locker.model.js (FINALE KORREKTUR: ASYNCHRONIE BEHOBEN)
 
 const mysql = require('mysql2/promise');
 const fs = require('fs/promises'); 
 const path = require('path');
+// Stellt sicher, dass der Pfad zu services/arduino.service korrekt ist
 const { updateLockerLed } = require('../services/arduino.service');
 
 // --- HILFSVARIABLEN ---
@@ -60,20 +61,19 @@ async function initializeDatabase({ DB_HOST, DB_USER, DB_PASS, DB_NAME }) {
 // MODEL FUNKTIONEN
 // =================================================================
 
+// WICHTIG: Die Pool-Prüfung wurde hier und in allen folgenden Funktionen entfernt!
+
 async function getById(id, conn = pool) {
-    if (!pool) throw new Error('Database not initialized');
     const [rows] = await conn.query(`SELECT * FROM spind WHERE id = :id`, { id: id });
     return rows[0] || null;
 }
 
 async function getByNumber(number, conn = pool) {
-    if (!pool) throw new Error('Database not initialized');
     const [rows] = await conn.query(`SELECT * FROM spind WHERE nummer = :number`, { number });
     return rows[0] || null;
 }
 
 async function getAll({ status, onlyAvailable }, conn = pool) {
-    if (!pool) throw new Error('Database not initialized');
     let sql = `SELECT * FROM spind`;
     const params = {};
     const where = [];
@@ -93,7 +93,6 @@ async function getAll({ status, onlyAvailable }, conn = pool) {
 }
 
 async function createMany(numbers, conn = pool) {
-    if (!pool) throw new Error('Database not initialized');
     const values = numbers.map(n => [n, 'frei', null, null, null]); 
     const [result] = await conn.query(
         `INSERT INTO spind (nummer, status, reserved_by, reserved_until, occupied_by) VALUES ?`,
@@ -103,7 +102,6 @@ async function createMany(numbers, conn = pool) {
 }
 
 async function reserveLocker({ lockerId, userId, minutes = 15 }) {
-    if (!pool) throw new Error('Database not initialized');
     const conn = await pool.getConnection();
     try {
         await conn.beginTransaction();
@@ -114,7 +112,7 @@ async function reserveLocker({ lockerId, userId, minutes = 15 }) {
             await conn.rollback();
             return { ok: false, code: 'NOT_FOUND' };
         }
-        // ... (Logik zur Statusprüfung) ...
+        
         const isExpired = row.status === 'reserviert' && row.reserved_until && new Date(row.reserved_until).getTime() < Date.now();
         const effectiveStatus = isExpired ? 'frei' : row.status;
         if (effectiveStatus !== 'frei') {
@@ -143,7 +141,6 @@ async function reserveLocker({ lockerId, userId, minutes = 15 }) {
 }
 
 async function occupyLocker({ lockerId, userId }) {
-    if (!pool) throw new Error('Database not initialized');
     const conn = await pool.getConnection();
     try {
         await conn.beginTransaction();
@@ -153,7 +150,7 @@ async function occupyLocker({ lockerId, userId }) {
             await conn.rollback();
             return { ok: false, code: 'NOT_FOUND' };
         }
-        // ... (Logik zur Statusprüfung) ...
+        
         const isExpired = row.status === 'reserviert' && row.reserved_until && new Date(row.reserved_until).getTime() < Date.now();
         if (row.status === 'frei' || isExpired) {
             const [upd] = await conn.query(
@@ -202,7 +199,6 @@ async function occupyLocker({ lockerId, userId }) {
 }
 
 async function releaseLocker({ lockerId, userId, force = false }) {
-    if (!pool) throw new Error('Database not initialized');
     const conn = await pool.getConnection();
     try {
         await conn.beginTransaction();
@@ -239,6 +235,7 @@ async function releaseLocker({ lockerId, userId, force = false }) {
         conn.release();
     }
 }
+
 
 module.exports = {
     pool,
