@@ -1,17 +1,21 @@
-// models/locker.model.js (FINAL KORRIGIERT)
+// models/locker.model.js (BEREINIGT)
+
 const mysql = require('mysql2/promise');
 const { updateLockerLed } = require('../services/arduino.service');
 
+// Der Pool wird JETZT DIREKT HIER erstellt, da die Datenbank in server.js existiert.
 const pool = mysql.createPool({
-    host: process.env.DB_HOST || '127.0.0.1',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASS || '',
-    database: process.env.DB_NAME || 'auth',
+    host: '127.0.0.1', 
+    user: 'root', 
+    password: '', 
+    database: 'smart_locker_system', 
     waitForConnections: true,
     connectionLimit: 10,
     namedPlaceholders: true,
     timezone: 'Z',
 });
+
+// ... (ALLE FUNKTIONEN BLEIBEN GLEICH, NUR DER POOL IST ANDERS DEFINIERT) ...
 
 async function getById(id, conn = pool) {
     const [rows] = await conn.query(
@@ -243,7 +247,8 @@ async function releaseLocker({ lockerId, userId, force = false }) {
 }
 
 module.exports = {
-    pool,
+    pool, 
+    // ACHTUNG: initializeDatabase wird NICHT mehr exportiert!
     getById,
     getByNumber,
     getAll,
