@@ -12,6 +12,8 @@ const { initializeDatabase } = lockerModel;
 
 // --- DB INITIALISIERUNGS-KONFIGURATION ---
 const DB_HOST = process.env.DB_HOST || '127.0.0.1';
+const DB_USER = process.env.DB_USER || 'test_user';
+const DB_PASS = process.env.DB_PASS || 'testpassword';
 // Wir verwenden hier die Umgebungsvariablen als primäre Quelle
 const DB_NAME = process.env.DB_NAME || 'smart_locker_system'; 
 
