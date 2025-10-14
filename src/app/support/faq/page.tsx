@@ -1,75 +1,74 @@
-import AccordionGallery from "@/components/molecules/AccordionGallery/AccordionGallery";
+import AccordionGallery from '@/components/molecules/AccordionGallery/AccordionGallery';
 
 const mockData = [
-    {
-        id: 1,
-        title: "Was ist Next.js?",
-        content:
-            "Next.js ist ein React-Framework, das Server-Side Rendering und statische Seitenerstellung unterstützt. Ideal für performante Webanwendungen.",
-    },
-    {
-        id: 2,
-        title: "Wie funktioniert Tailwind CSS?",
-        content:
-            "Tailwind ist ein Utility-First-CSS-Framework. Du baust dein Design direkt im Markup mit vordefinierten Klassen.",
-    },
-    {
-        id: 3,
-        title: "Was ist der Unterschied zwischen Props und State?",
-        content:
-            "Props sind unveränderliche Eingaben, die von außen kommen. State ist veränderlich und wird innerhalb der Komponente verwaltet.",
-    },
-    {
-        id: 4,
-        title: "Wie installiere ich Storybook?",
-        content:
-            "Einfach mit `npx storybook@latest init`. Danach startet Storybook lokal unter `localhost:6006`.",
-    },
-    {
-        id: 5,
-        title: "Was ist ein Hook in React?",
-        content:
-            "Hooks sind Funktionen, die es ermöglichen, React-Features wie State und Lifecycle in funktionalen Komponenten zu nutzen.",
-    },
-    {
-        id: 6,
-        title: "Wofür ist useEffect gut?",
-        content:
-            "useEffect wird genutzt, um Side-Effects auszuführen – z. B. API-Calls, Event Listener oder DOM-Manipulationen.",
-    },
-    {
-        id: 7,
-        title: "Wie funktioniert das Routing in Next.js?",
-        content:
-            "Next.js nutzt Dateibasiertes Routing. Jede Datei im Ordner `pages` oder `app` wird automatisch zu einer Route.",
-    },
-    {
-        id: 8,
-        title: "Was ist der Unterschied zwischen SSR und SSG?",
-        content:
-            "SSR rendert Seiten bei jeder Anfrage auf dem Server. SSG erzeugt sie einmalig beim Build und liefert statische Dateien aus.",
-    },
-    {
-        id: 9,
-        title: "Wie funktioniert die API-Route in Next.js?",
-        content:
-            "In `pages/api` oder `app/api` kannst du serverseitige Endpoints erstellen, die als API fungieren.",
-    },
-    {
-        id: 10,
-        title: "Was ist ein Component-Driven Development?",
-        content:
-            "CDD bedeutet, dass du UIs aus kleinen, wiederverwendbaren Komponenten aufbaust und diese isoliert entwickelst – meist mit Storybook.",
-    },
+  {
+    id: 1,
+    title: 'Was ist das Smart-Spind-System?',
+    content:
+      'Es ist ein Cyber-Physisches System, das die Nutzung von Spinden effizienter, sicherer und transparenter macht. Es nutzt Sensoren, Anzeigen und ein Backend zur automatischen Überwachung der Belegung.',
+  },
+  {
+    id: 2,
+    title: 'Wie entsperre oder sperre ich einen Spind?',
+    content:
+      'Der Zugang wird über RFID- oder PIN-Erkennung gesteuert. Kunden können den Spind mit ihrer Mitgliedskarte (NFC/RFID) oder ihrem Passwort (PIN) entsperren.',
+  },
+  {
+    id: 3,
+    title: 'Wie sehe ich, ob ein Spind frei ist?',
+    content:
+      'LED-Anzeigen informieren in Echtzeit darüber, welche Spinde frei oder belegt sind, sodass Kunden sofort einen verfügbaren Spind finden.',
+  },
+  {
+    id: 4,
+    title: 'Welche Sensoren und Aktoren werden verwendet?',
+    content:
+      'Das System nutzt PIR-Motion-Sensoren, RFID-Reader und einen Membranschalter als Sensoren. Als Aktoren dienen LEDs, ein LCD und ein Servomotor.',
+  },
+  {
+    id: 5,
+    title: 'Was passiert, wenn ich einen Spind belege?',
+    content:
+      "Das System speichert die Nutzung automatisch, inklusive Benutzer-ID, Uhrzeit und Spind-ID. Der Spindstatus wird auf 'besetzt' aktualisiert.",
+  },
+  {
+    id: 6,
+    title: 'Wie wird die Spindbelegung protokolliert?',
+    content:
+      'Alle Nutzungen werden protokolliert. Dies ermöglicht dem Geschäftsführer jederzeit einen digitalen Überblick und hilft, Engpässe frühzeitig zu erkennen.',
+  },
+  {
+    id: 7,
+    title: 'Was zeigt die rote LED an?',
+    content:
+      "Die rote LED zeigt an, dass der Spind 'besetzt' ist. Gelb signalisiert 'reserviert' oder 'Wartung', und Grün signalisiert 'frei'.",
+  },
+  {
+    id: 8,
+    title: 'Was passiert, wenn eine Bewegung erkannt wird?',
+    content:
+      'Die Erkennung durch den Motion-Sensor (PIR) löst die Anzeige des aktuellen Spindstatus (Rot, Gelb, Grün) auf dem Display aus.',
+  },
+  {
+    id: 9,
+    title: 'Wie hilft das System dem Geschäftsführer?',
+    content:
+      'Es reduziert Wartezeiten und Unzufriedenheit der Kunden. Außerdem erhält der Geschäftsführer Kontrolle über die Belegung, wodurch Abläufe optimiert werden.',
+  },
+  {
+    id: 10,
+    title: 'Was ist der Hauptzweck des Systems?',
+    content:
+      'Ziel ist es, die Spindnutzung effizienter, sicherer und transparenter zu gestalten, um Frust und Verzögerungen beim Training zu vermeiden.',
+  },
 ];
 
-
 const FAQPage = () => {
-    return (
-        <div>
-            <AccordionGallery elements={mockData}/>
-        </div>
-    );
-}
+  return (
+    <div>
+      <AccordionGallery elements={mockData} />
+    </div>
+  );
+};
 
 export default FAQPage;

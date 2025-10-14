@@ -1,38 +1,39 @@
-import type {Metadata} from "next";
-import React from "react";
+import type { Metadata } from 'next';
+import React from 'react';
 import './globals.css';
-import {Geist, Geist_Mono} from "next/font/google";
-import Navigation from "@/components/molecules/Navigation/Navigation";
-import {Toaster} from "react-hot-toast";
-
+import { Geist, Geist_Mono } from 'next/font/google';
+import Navigation from '@/components/molecules/Navigation/Navigation';
+import { Toaster } from 'react-hot-toast';
 
 const geistSans = Geist({
-    variable: "--font-geist-sans",
-    subsets: ["latin"],
+  variable: '--font-geist-sans',
+  subsets: ['latin'],
 });
 
 const geistMono = Geist_Mono({
-    variable: "--font-geist-mono",
-    subsets: ["latin"],
+  variable: '--font-geist-mono',
+  subsets: ['latin'],
 });
 
 export const metadata: Metadata = {
-    title: "Lernfeld 7",
-    description: "Lernfeld 7: Cyber-Physische Systeme ergänzen",
+  title: 'Lernfeld 7',
+  description: 'Lernfeld 7: Cyber-Physische Systeme ergänzen',
 };
 
-const RootLayout = ({children}: Readonly<{ children: React.ReactNode }>): React.ReactElement => {
-    return (
-        <html lang="de">
-        <body
-            className={`${geistSans.variable} ${geistMono.variable} antialiased px-8`}
-        >
-        <Navigation/>
+const RootLayout = ({
+  children,
+}: Readonly<{ children: React.ReactNode }>): React.ReactElement => {
+  return (
+    <html lang='de'>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased px-8`}
+      >
+        <Navigation />
         {children}
-        <Toaster position="top-right"/>
-        </body>
-        </html>
-    );
-}
+        <Toaster position='top-right' />
+      </body>
+    </html>
+  );
+};
 
-export default RootLayout
+export default RootLayout;

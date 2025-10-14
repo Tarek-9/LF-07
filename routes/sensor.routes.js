@@ -14,10 +14,16 @@ router.post('/sensors', /* requireAuth, */ ctrl.createSensor);
 router.put('/sensors/:id', /* requireAuth, */ ctrl.updateSensor);
 
 router.patch('/sensors/:id/aktiv', /* requireAuth, */ ctrl.setSensorAktiv);
-router.patch('/sensors/:id/toggle-aktiv', /* requireAuth, */ ctrl.toggleSensorAktiv);
+router.patch(
+  '/sensors/:id/toggle-aktiv',
+  /* requireAuth, */ ctrl.toggleSensorAktiv
+);
 
 // Upsert je Spind + Typ (praktisch, falls UNIQUE(spind_id, typ))
-router.patch('/spinds/:spindId/sensor', /* requireAuth, */ ctrl.upsertSpindSensor);
+router.patch(
+  '/spinds/:spindId/sensor',
+  /* requireAuth, */ ctrl.upsertSpindSensor
+);
 
 router.delete('/sensors/:id', /* requireAuth, */ ctrl.deleteSensor);
 

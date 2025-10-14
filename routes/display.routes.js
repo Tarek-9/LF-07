@@ -14,10 +14,16 @@ router.get('/spinds/:spindId/displays', ctrl.listDisplaysForSpind);
 // Erstellen/Updaten
 router.post('/displays', /* requireAuth, */ ctrl.createDisplay);
 router.put('/displays/:id', /* requireAuth, */ ctrl.updateDisplay);
-router.patch('/displays/:id/content', /* requireAuth, */ ctrl.updateDisplayContent);
+router.patch(
+  '/displays/:id/content',
+  /* requireAuth, */ ctrl.updateDisplayContent
+);
 
 // Upsert für ein Spind+Typ (praktisch für UI-Formulare)
-router.patch('/spinds/:spindId/display', /* requireAuth, */ ctrl.upsertSpindDisplay);
+router.patch(
+  '/spinds/:spindId/display',
+  /* requireAuth, */ ctrl.upsertSpindDisplay
+);
 
 // Löschen
 router.delete('/displays/:id', /* requireAuth, */ ctrl.deleteDisplay);
