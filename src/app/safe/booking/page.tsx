@@ -26,7 +26,9 @@ export default function BookingPage() {
       const res = await fetch(listUrl, { credentials: 'include' });
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(`GET ${listUrl} failed: ${res.status} ${res.statusText} – ${text}`);
+        throw new Error(
+          `GET ${listUrl} failed: ${res.status} ${res.statusText} – ${text}`
+        );
       }
       const data = await res.json();
       const mapped: PlaceElement[] = (data.lockers || []).map((l: any) => ({
@@ -56,7 +58,9 @@ export default function BookingPage() {
       });
       if (!res.ok) {
         const msgText = await res.text().catch(() => '');
-        throw new Error(msgText || `Reservieren fehlgeschlagen (HTTP ${res.status})`);
+        throw new Error(
+          msgText || `Reservieren fehlgeschlagen (HTTP ${res.status})`
+        );
       }
       await load();
     } catch (e: any) {
@@ -78,7 +82,9 @@ export default function BookingPage() {
       });
       if (!res.ok) {
         const msgText = await res.text().catch(() => '');
-        throw new Error(msgText || `Spind freigeben fehlgeschlagen (HTTP ${res.status})`);
+        throw new Error(
+          msgText || `Spind freigeben fehlgeschlagen (HTTP ${res.status})`
+        );
       }
       await load();
     } catch (e: any) {
@@ -97,7 +103,9 @@ export default function BookingPage() {
     <div className='p-6 space-y-4'>
       <h1 className='text-2xl font-semibold'>Spind-Buchung</h1>
       <div className='text-sm text-gray-600'>
-        {loading ? 'Lade Spinde…' : `${places.length} Spinde, davon ${freeCount} frei`}
+        {loading
+          ? 'Lade Spinde…'
+          : `${places.length} Spinde, davon ${freeCount} frei`}
       </div>
       {error && (
         <div className='rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800'>
@@ -111,7 +119,10 @@ export default function BookingPage() {
           const canReserve = isFree;
           const canFree = place.status !== 'frei';
           return (
-            <div key={place.id} className='rounded-xl border p-3 flex flex-col gap-2 shadow-sm'>
+            <div
+              key={place.id}
+              className='rounded-xl border p-3 flex flex-col gap-2 shadow-sm'
+            >
               <div className='flex items-center justify-between'>
                 <div className='font-medium'>#{place.id}</div>
                 <span
@@ -139,7 +150,9 @@ export default function BookingPage() {
                     : 'bg-gray-200 text-gray-500 cursor-not-allowed')
                 }
               >
-                {reservingId === place.id ? 'Reserviere…' : 'Reservieren (15 min)'}
+                {reservingId === place.id
+                  ? 'Reserviere…'
+                  : 'Reservieren (15 min)'}
               </button>
 
               <button
