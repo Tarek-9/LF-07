@@ -1,69 +1,47 @@
-// services/arduino.service.js
-const { SerialPort } = require('serialport');
-const { ReadlineParser } = require('@serialport/parser-readline');
+// server.js
+const express = require('express');
+const app = express();
+const lockerModel = require('./models/locker.model');
+const db = require('./models/db');
+const { connectMaster, connectSlave } = require('./services/arduino.service');
 
-let masterPort, masterParser;
-let slavePort, slaveParser;
+(async () => {
+  await connectMaster();
+  await connectSlave();
+})();
 
-// ========== Master (LED/LCD/PIR) ==========
-async function connectMaster() {
-  try {
-    masterPort = new SerialPort({ path: '/dev/ttyACM0', baudRate: 9600 });
-    masterParser = masterPort.pipe(new ReadlineParser({ delimiter: '\n' }));
-    masterParser.on('data', (line) => {
-      console.log('[MASTER]', line.trim());
-    });
-    console.log('✅ Master verbunden: /dev/ttyACM0');
-  } catch (err) {
-    console.error('❌ Master konnte nicht verbunden werden:', err);
-  }
+// Middleware
+app.use(express.json({ limit: '1mb' }));
+
+// Test Auth
+app.use((req, _res, next) => {
+  if (!req.user) req.user = { id: 123 }; // Mock-User
+  next();
+});
+
+// Ping / Health
+app.get('/__ping', (_req, res) => res.send('ok'));
+app.get('/api/health', (_req, res) => res.json({ ok: true, ts: Date.now() }));
+
+// Router
+const lockerRoute = require('./routes/locker.routes');
+app.use('/api', lockerRoute);
+
+// Start Server
+const PORT = 3008;
+
+async function startServer() {
+  await lockerModel.initializeDatabase({
+    DB_HOST: process.env.DB_HOST || '127.0.0.1',
+    DB_USER: process.env.DB_USER || 'test_user',
+    DB_PASS: process.env.DB_PASS || 'testpassword',
+    DB_NAME: process.env.DB_NAME || 'smart_locker_system',
+  });
+
+  app.listen(PORT, () => console.log(`[Express] Läuft auf Port ${PORT}`));
 }
 
-// ========== Slave (RFID/Motor/Keypad) ==========
-async function connectSlave() {
-  try {
-    slavePort = new SerialPort({ path: '/dev/ttyACM1', baudRate: 9600 });
-    slaveParser = slavePort.pipe(new ReadlineParser({ delimiter: '\n' }));
-    slaveParser.on('data', (line) => {
-      console.log('[SLAVE]', line.trim());
-      handleSlaveInput(line.trim());
-    });
-    console.log('✅ Slave verbunden: /dev/ttyACM1');
-  } catch (err) {
-    console.error('❌ Slave konnte nicht verbunden werden:', err);
-  }
-}
-
-// Beispiel: RFID oder Keypad sendet was
-function handleSlaveInput(line) {
-  if (line.startsWith('RFID:')) {
-    const tag = line.substring(5).trim();
-    console.log(`[RFID] Karte erkannt: ${tag}`);
-  }
-  if (line === 'MOTOR:OPENED') {
-    console.log('[Motor] Spind geöffnet');
-  }
-}
-
-// Master LED steuern (Status anzeigen)
-function updateLockerLed(status) {
-  if (!masterPort || !masterPort.writable)
-    return console.warn('[updateLockerLed] Kein Master verbunden');
-  const cmd = `STATUS:${status}\n`;
-  masterPort.write(cmd);
-}
-
-// Slave Motor steuern (z. B. öffnen/schließen)
-function controlMotor(action) {
-  if (!slavePort || !slavePort.writable)
-    return console.warn('[controlMotor] Kein Slave verbunden');
-  const cmd = `MOTOR:${action}\n`;
-  slavePort.write(cmd);
-}
-
-module.exports = {
-  connectMaster,
-  connectSlave,
-  updateLockerLed,
-  controlMotor,
-};
+startServer().catch((err) => {
+  console.error('[FATAL STARTUP ERROR]', err);
+  process.exit(1);
+});

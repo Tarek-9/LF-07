@@ -1,15 +1,12 @@
-// models/locker.model.js (FINAL KORRIGIERT: NUR KERN-STATUS)
-
+// models/locker.model.js
 const mysql = require('mysql2/promise');
 const fs = require('fs/promises');
 const path = require('path');
 const { updateLockerLed } = require('../services/arduino.service');
 
-// --- HILFSVARIABLEN ---
 const SQL_SCHEMA_PATH = path.join(__dirname, '..', 'smart_locker_system.sql');
 let pool = null;
 
-// Konfiguration aus Umgebungsvariablen (für RPi/XAMPP)
 const DB_HOST = process.env.DB_HOST || '127.0.0.1';
 const DB_USER = process.env.DB_USER || 'root';
 const DB_PASS = process.env.DB_PASS || '';
@@ -18,9 +15,7 @@ const DB_NAME = process.env.DB_NAME || 'smart_locker_system';
 // =================================================================
 // DB INITIALISIERUNG
 // =================================================================
-
 async function initializeDatabase() {
-  // ... (Logik bleibt, um die Datenbank zu initialisieren) ...
   const rootConnection = await mysql.createConnection({
     host: DB_HOST,
     user: DB_USER,
@@ -29,12 +24,9 @@ async function initializeDatabase() {
   });
 
   try {
-    await rootConnection.execute(
-      `CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;`
-    );
+    await rootConnection.execute(`CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;`);
     const sqlSchema = await fs.readFile(SQL_SCHEMA_PATH, 'utf-8');
-    const fullSchemaSql = `USE \`${DB_NAME}\`;\n${sqlSchema}`;
-    await rootConnection.query(fullSchemaSql);
+    await rootConnection.query(`USE \`${DB_NAME}\`; ${sqlSchema}`);
   } finally {
     await rootConnection.end();
   }
@@ -52,84 +44,40 @@ async function initializeDatabase() {
 }
 
 // =================================================================
-// MODEL FUNKTIONEN (BEREINIGT)
+// MODEL-FUNKTIONEN
 // =================================================================
-
-async function getById(id, conn = pool) {
-  const [rows] = await conn.query(`SELECT * FROM spind WHERE id = :id`, {
-    id: id,
-  });
+async function getById(id) {
+  const [rows] = await pool.query(`SELECT * FROM spind WHERE id = :id`, { id });
   return rows[0] || null;
 }
 
-async function getByNumber(number, conn = pool) {
-  const [rows] = await conn.query(
-    `SELECT * FROM spind WHERE nummer = :number`,
-    { number }
-  );
-  return rows[0] || null;
-}
-
-async function getAll({ status, onlyAvailable }, conn = pool) {
+async function getAll({ status } = {}) {
   let sql = `SELECT * FROM spind`;
   const params = {};
   const where = [];
-
   if (status) {
     where.push(`status = :status`);
     params.status = status;
   }
-  // HINWEIS: Hier entfernen wir die komplexe "abgelaufene Reservierung"-Logik
   if (where.length) sql += ` WHERE ` + where.join(' AND ');
   sql += ` ORDER BY nummer ASC`;
-
-  const [rows] = await conn.query(sql, params);
+  const [rows] = await pool.query(sql, params);
   return rows;
 }
 
-async function createMany(numbers, conn = pool) {
-  if (!numbers.length) return [];
-  // Passt die Werte an die vorhandenen Spalten an: nummer, status, created_at
-  const values = numbers.map((n) => [n, 'frei']);
-  const [result] = await conn.query(
-    `INSERT INTO spind (nummer, status) VALUES ?`, // Passt die Spalten an das einfache Schema an
-    [values]
-  );
-  return result.insertId;
-}
-
-/**
- * Reservierung: Setzt den Status auf 'reserviert'. Entfernt alle nicht-existierenden Spalten.
- */
 async function reserveLocker({ lockerId }) {
-  // Entfernt userId und minutes
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
-
     const [rows] = await conn.query(
       `SELECT status FROM spind WHERE id = :id FOR UPDATE`,
       { id: lockerId }
     );
     const row = rows[0];
-    if (!row) {
-      await conn.rollback();
-      return { ok: false, code: 'NOT_FOUND' };
-    }
+    if (!row) return { ok: false, code: 'NOT_FOUND' };
+    if (row.status !== 'frei') return { ok: false, code: 'NOT_AVAILABLE', currentStatus: row.status };
 
-    if (row.status !== 'frei') {
-      await conn.rollback();
-      return { ok: false, code: 'NOT_AVAILABLE', currentStatus: row.status };
-    }
-
-    // KORREKTUR: Setzt NUR den Status (reserved_by, reserved_until entfernt)
-    await conn.query(
-      `UPDATE spind
-       SET status = 'reserviert'
-       WHERE id = :id`,
-      { id: lockerId }
-    );
-
+    await conn.query(`UPDATE spind SET status='reserviert' WHERE id=:id`, { id: lockerId });
     updateLockerLed('reserviert');
     await conn.commit();
     return { ok: true };
@@ -141,11 +89,7 @@ async function reserveLocker({ lockerId }) {
   }
 }
 
-/**
- * Belegen: Setzt den Status auf 'besetzt'.
- */
 async function occupyLocker({ lockerId }) {
-  // Entfernt userId
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -154,24 +98,10 @@ async function occupyLocker({ lockerId }) {
       { id: lockerId }
     );
     const row = rows[0];
-    if (!row) {
-      await conn.rollback();
-      return { ok: false, code: 'NOT_FOUND' };
-    }
+    if (!row) return { ok: false, code: 'NOT_FOUND' };
+    if (row.status === 'besetzt') return { ok: false, code: 'ALREADY_OCCUPIED' };
 
-    if (row.status === 'besetzt') {
-      await conn.rollback();
-      return { ok: false, code: 'ALREADY_OCCUPIED' };
-    }
-
-    // KORREKTUR: Setzt NUR den Status
-    await conn.query(
-      `UPDATE spind
-       SET status = 'besetzt'
-       WHERE id = :id`,
-      { id: lockerId }
-    );
-
+    await conn.query(`UPDATE spind SET status='besetzt' WHERE id=:id`, { id: lockerId });
     updateLockerLed('besetzt');
     await conn.commit();
     return { ok: true };
@@ -183,33 +113,18 @@ async function occupyLocker({ lockerId }) {
   }
 }
 
-/**
- * Freigeben: Setzt den Status auf 'frei'.
- */
 async function releaseLocker({ lockerId }) {
-  // Entfernt userId, force
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
-
     const [rows] = await conn.query(
       `SELECT status FROM spind WHERE id = :id FOR UPDATE`,
       { id: lockerId }
     );
     const row = rows[0];
-    if (!row) {
-      await conn.rollback();
-      return { ok: false, code: 'NOT_FOUND' };
-    }
+    if (!row) return { ok: false, code: 'NOT_FOUND' };
 
-    // KORREKTUR: Setzt NUR den Status
-    await conn.query(
-      `UPDATE spind
-       SET status = 'frei'
-       WHERE id = :id`,
-      { id: lockerId }
-    );
-
+    await conn.query(`UPDATE spind SET status='frei' WHERE id=:id`, { id: lockerId });
     updateLockerLed('frei');
     await conn.commit();
     return { ok: true };
@@ -222,12 +137,9 @@ async function releaseLocker({ lockerId }) {
 }
 
 module.exports = {
-  pool,
   initializeDatabase,
   getById,
-  getByNumber,
   getAll,
-  createMany,
   reserveLocker,
   occupyLocker,
   releaseLocker,

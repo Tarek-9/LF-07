@@ -1,37 +1,47 @@
-// src/routes/locker.routes.js
+// routes/locker.routes.js
 const express = require('express');
 const router = express.Router();
-const ctrl = require('../controllers/locker.controller');
+const db = require('../models/db');
+const {
+  updateLockerLed,
+  controlMotor,
+} = require('../services/arduino.service');
 
-// Optional: Auth-Middleware, die req.user setzt
+// Alle Spinde abrufen
+router.get('/lockers', async (_req, res) => {
+  const [rows] = await db.query('SELECT * FROM spind ORDER BY nummer');
+  res.json(rows);
+});
 
-const requireAuth = (req, res, next) => {
-  // Holen des Authorization Headers (z.B. "Bearer DEIN_TOKEN")
-  const authHeader = req.headers.authorization;
+// Spind online reservieren
+router.post('/lockers/:id/reserve', async (req, res) => {
+  const { id } = req.params;
+  const [rows] = await db.query('SELECT status FROM spind WHERE id = ?', [id]);
 
-  // 1. Prüfen, ob ein Header existiert und mit "Bearer" beginnt
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    // Da wir keinen echten JWT-Check durchführen können,
-    // nehmen wir an, der Token ist gültig.
+  if (!rows.length)
+    return res.status(404).json({ message: 'Spind nicht gefunden' });
+  if (rows[0].status !== 'frei')
+    return res.status(400).json({ message: 'Nicht verfügbar' });
 
-    // 2. req.user auf die Test-ID setzen, um die DB-Logik zu erfüllen
-    req.user = { id: 101 };
+  await db.query('UPDATE spind SET status=? WHERE id=?', ['reserviert', id]);
+  updateLockerLed('reserviert');
+  controlMotor('OPEN');
 
-    console.log('--- ACHTUNG: Auth Bypass Aktiviert ---'); // Log-Hinweis
-    return next();
-  }
+  res.json({ message: 'Spind reserviert' });
+});
 
-  // 3. Wenn kein gültiger Header vorhanden ist, schlägt der Test fehl
-  return res.status(401).json({ message: 'Nicht authentifiziert.' });
-};
+// Status vom Slave aktualisieren (RFID/PIN)
+router.post('/lockers/:id/status', async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
 
-// Übersichten
-router.get('/lockers', ctrl.listLockers);
-router.get('/lockers/:id/status', ctrl.getLockerStatus);
+  if (!['frei', 'besetzt', 'reserviert'].includes(status))
+    return res.status(400).json({ message: 'Ungültiger Status' });
 
-// Aktionen (reservieren/belegen/freigeben) → Auth nötig
-router.post('/lockers/:id/reserve', ctrl.reserveLocker);
-router.post('/lockers/:id/occupy', ctrl.occupyLocker);
-router.post('/lockers/:id/release', ctrl.releaseLocker);
+  await db.query('UPDATE spind SET status=? WHERE id=?', [status, id]);
+  updateLockerLed(status);
+
+  res.json({ message: 'Status aktualisiert' });
+});
 
 module.exports = router;
