@@ -1,0 +1,146 @@
+#include <Arduino.h>
+#include <Keypad.h>
+#include <RFID.h>
+#include <Servo.h>
+
+// ---------------- Pin Definitions ----------------
+#define KEYPADMEM3X4_PIN_ROW1 5
+#define KEYPADMEM3X4_PIN_ROW2 6
+#define KEYPADMEM3X4_PIN_ROW3 7
+#define KEYPADMEM3X4_PIN_ROW4 8
+#define KEYPADMEM3X4_PIN_COL1 2
+#define KEYPADMEM3X4_PIN_COL2 3
+#define KEYPADMEM3X4_PIN_COL3 4
+#define RFID_PIN_RST 9
+#define RFID_PIN_SDA 10
+#define SERVO360MICRO_PIN_SIG A3
+
+// ---------------- Keypad Setup ----------------
+char keys[4][3] = {
+  {'1','2','3'},
+  {'4','5','6'},
+  {'7','8','9'},
+  {'*','0','#'}
+};
+Keypad keypad(
+  KEYPADMEM3X4_PIN_COL1, KEYPADMEM3X4_PIN_COL2, KEYPADMEM3X4_PIN_COL3,
+  KEYPADMEM3X4_PIN_ROW1, KEYPADMEM3X4_PIN_ROW2, KEYPADMEM3X4_PIN_ROW3, KEYPADMEM3X4_PIN_ROW4
+);
+
+// ---------------- RFID Setup ----------------
+RFID rfid(RFID_PIN_SDA, RFID_PIN_RST);
+
+// ---------------- Servo Setup ----------------
+Servo servo360Micro;
+
+// ---------------- Global Variables ----------------
+long lastKeyTime = 0;
+const long KEY_DEBOUNCE = 300;
+long lastRFIDTime = 0;
+const long RFID_DEBOUNCE = 500;
+
+// ---------------- Motor Non-Blocking ----------------
+enum MotorState { STOP, MOVING_TO_OPEN, MOVING_TO_CLOSE };
+MotorState motorState = STOP;
+unsigned long motorStartTime = 0;
+const unsigned long MOTOR_MOVE_DURATION = 2000; // 2 Sekunden
+
+// ---------------- Status ----------------
+String currentStatus = "frei";
+
+// ---------------- PIN Eingabe ----------------
+String pinBuffer = "";
+const byte PIN_LENGTH = 4;
+
+// ---------------- Setup ----------------
+void setup() {
+  Serial.begin(9600);
+  while(!Serial);
+  Serial.println("SLAVE START");
+
+  keypad.begin(keys);
+  rfid.init();
+  servo360Micro.attach(SERVO360MICRO_PIN_SIG);
+
+  setMotorPosition(currentStatus);
+}
+
+// ---------------- Motorsteuerung ----------------
+void setMotorPosition(String status) {
+  if (status == "frei") {
+    servo360Micro.write(180); // Tür offen
+    Serial.println("MOTOR:OPENED");
+    motorState = STOP;
+  } else {
+    servo360Micro.write(0); // Tür zu
+    Serial.println("MOTOR:CLOSED");
+    motorState = STOP;
+  }
+}
+
+// ---------------- Loop ----------------
+void loop() {
+  handleSerial();
+  handleKeypad();
+  handleRFID();
+  handleMotor();
+  delay(10);
+}
+
+// ---------------- Serial Commands ----------------
+void handleSerial() {
+  if (Serial.available()) {
+    String cmd = Serial.readStringUntil('\n');
+    cmd.trim();
+
+    if (cmd.startsWith("STATUS:")) {
+      String newStatus = cmd.substring(7);
+      if (newStatus != currentStatus) {
+        currentStatus = newStatus;
+        setMotorPosition(currentStatus);
+      }
+    }
+  }
+}
+
+// ---------------- Keypad ----------------
+void handleKeypad() {
+  char key = keypad.getKey();
+  if (key && (millis() - lastKeyTime > KEY_DEBOUNCE)) {
+    lastKeyTime = millis();
+
+    if (key >= '0' && key <= '9') {
+      pinBuffer += key;
+      if (pinBuffer.length() == PIN_LENGTH) {
+        Serial.print("PIN_ENTERED:");
+        Serial.println(pinBuffer);
+        pinBuffer = ""; // reset buffer nach senden
+      }
+    } else if (key == '*') {
+      pinBuffer = ""; // reset
+    }
+  }
+}
+
+// ---------------- RFID ----------------
+void handleRFID() {
+  if (rfid.isCard()) {
+    if (rfid.readCardSerial()) {
+      String tag = "";
+      for (byte i = 0; i < 5; i++) tag += String(rfid.serNum[i], HEX);
+
+      if (millis() - lastRFIDTime > RFID_DEBOUNCE) {
+        lastRFIDTime = millis();
+        Serial.print("RFID:");
+        Serial.println(tag);
+      }
+      rfid.halt();
+    }
+  }
+}
+
+// ---------------- Motor Non-Blocking ----------------
+void handleMotor() {
+  // aktuell noch nicht für komplexere Bewegungen nötig
+  // wird über setMotorPosition direkt gesteuert
+}

@@ -10,12 +10,11 @@ export type PlaceElement = {
   size: 'small' | 'medium' | 'large';
 };
 
-// API-Basis: fällt auf '/api' zurück, falls du später Rewrites nutzt.
-
 export default function BookingPage() {
   const [places, setPlaces] = useState<PlaceElement[]>([]);
   const [loading, setLoading] = useState(false);
   const [reservingId, setReservingId] = useState<number | null>(null);
+  const [freeingId, setFreeingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const API = '/api';
 
@@ -24,17 +23,11 @@ export default function BookingPage() {
     setError(null);
     try {
       const listUrl = `${API}/lockers`;
-      console.log('[load] GET', listUrl);
-
       const res = await fetch(listUrl, { credentials: 'include' });
       if (!res.ok) {
         const text = await res.text();
-        console.error(`[load] ${res.status} ${res.statusText}:`, text);
-        throw new Error(
-          `GET ${listUrl} failed: ${res.status} ${res.statusText} – ${text}`
-        );
+        throw new Error(`GET ${listUrl} failed: ${res.status} ${res.statusText} – ${text}`);
       }
-
       const data = await res.json();
       const mapped: PlaceElement[] = (data.lockers || []).map((l: any) => ({
         id: l.id,
@@ -61,17 +54,37 @@ export default function BookingPage() {
         credentials: 'include',
         body: JSON.stringify({ minutes }),
       });
-
-      if (res.ok) {
-        await load();
-      } else {
+      if (!res.ok) {
         const msgText = await res.text().catch(() => '');
-        setError(msgText || `Reservieren fehlgeschlagen (HTTP ${res.status})`);
+        throw new Error(msgText || `Reservieren fehlgeschlagen (HTTP ${res.status})`);
       }
+      await load();
     } catch (e: any) {
       setError(e?.message ?? 'Fehler beim Reservieren');
     } finally {
       setReservingId(null);
+    }
+  }
+
+  async function free(id: number) {
+    setFreeingId(id);
+    setError(null);
+    try {
+      const freeUrl = `${API}/lockers/${id}/free`;
+      const res = await fetch(freeUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const msgText = await res.text().catch(() => '');
+        throw new Error(msgText || `Spind freigeben fehlgeschlagen (HTTP ${res.status})`);
+      }
+      await load();
+    } catch (e: any) {
+      setError(e?.message ?? 'Fehler beim Freigeben');
+    } finally {
+      setFreeingId(null);
     }
   }
 
@@ -84,9 +97,7 @@ export default function BookingPage() {
     <div className='p-6 space-y-4'>
       <h1 className='text-2xl font-semibold'>Spind-Buchung</h1>
       <div className='text-sm text-gray-600'>
-        {loading
-          ? 'Lade Spinde…'
-          : `${places.length} Spinde, davon ${freeCount} frei`}
+        {loading ? 'Lade Spinde…' : `${places.length} Spinde, davon ${freeCount} frei`}
       </div>
       {error && (
         <div className='rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800'>
@@ -98,11 +109,9 @@ export default function BookingPage() {
         {places.map((place) => {
           const isFree = place.status === 'frei';
           const canReserve = isFree;
+          const canFree = place.status !== 'frei';
           return (
-            <div
-              key={place.id}
-              className='rounded-xl border p-3 flex flex-col gap-2 shadow-sm'
-            >
+            <div key={place.id} className='rounded-xl border p-3 flex flex-col gap-2 shadow-sm'>
               <div className='flex items-center justify-between'>
                 <div className='font-medium'>#{place.id}</div>
                 <span
@@ -130,9 +139,21 @@ export default function BookingPage() {
                     : 'bg-gray-200 text-gray-500 cursor-not-allowed')
                 }
               >
-                {reservingId === place.id
-                  ? 'Reserviere…'
-                  : 'Reservieren (15 min)'}
+                {reservingId === place.id ? 'Reserviere…' : 'Reservieren (15 min)'}
+              </button>
+
+              <button
+                type='button'
+                disabled={!canFree || freeingId === place.id}
+                onClick={() => free(place.id)}
+                className={
+                  'w-full rounded-lg py-2 text-sm font-semibold transition mt-1 ' +
+                  (canFree
+                    ? 'bg-green-600 text-white hover:bg-green-700'
+                    : 'bg-gray-200 text-gray-500 cursor-not-allowed')
+                }
+              >
+                {freeingId === place.id ? 'Frei machen…' : 'Spind frei machen'}
               </button>
             </div>
           );
