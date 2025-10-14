@@ -26,8 +26,9 @@ async function connectSlave() {
     slavePort = new SerialPort({ path: '/dev/ttyACM1', baudRate: 9600 });
     slaveParser = slavePort.pipe(new ReadlineParser({ delimiter: '\n' }));
     slaveParser.on('data', (line) => {
-      console.log('[SLAVE]', line.trim());
-      handleSlaveInput(line.trim());
+      line = line.trim();
+      console.log('[SLAVE]', line);
+      handleSlaveInput(line);
     });
     console.log('✅ Slave verbunden: /dev/ttyACM1');
   } catch (err) {
@@ -35,7 +36,7 @@ async function connectSlave() {
   }
 }
 
-// Master LED / Status aktualisieren
+// Master LED steuern (Status anzeigen)
 function updateLockerLed(status) {
   if (!masterPort || !masterPort.writable)
     return console.warn('[updateLockerLed] Kein Master verbunden');
@@ -44,7 +45,7 @@ function updateLockerLed(status) {
   masterPort.write(cmd);
 }
 
-// Motor steuern (OFFEN / ZU)
+// Motor steuern
 function controlMotor(action) {
   if (!slavePort || !slavePort.writable)
     return console.warn('[controlMotor] Kein Slave verbunden');
@@ -53,7 +54,7 @@ function controlMotor(action) {
   slavePort.write(cmd);
 }
 
-// Slave Input (RFID / Keypad) verarbeiten
+// Slave Input (RFID/PIN) verarbeiten
 function handleSlaveInput(line) {
   if (!line) return;
 
@@ -62,19 +63,27 @@ function handleSlaveInput(line) {
     const tag = line.substring(5).trim();
     console.log('[RFID] Karte erkannt:', tag);
 
-    // Beispiel: Spind 1 auf besetzt setzen
-    axios.post('http://localhost:3008/api/lockers/1/status', { status: 'besetzt' })
+    // Backend: Spindstatus auf besetzt setzen
+    axios.post('http://localhost:3008/api/lockers/1/status', { 
+      status: 'besetzt', 
+      auth_method: 'RFID',
+      code: tag
+    })
       .then(res => console.log('[Backend]', res.data.message))
       .catch(err => console.error('[Backend] Fehler', err.message));
   }
 
-  // Keypad
-  if (line.startsWith('KEY:')) {
-    const key = line.substring(4).trim();
-    console.log('[KEYPAD] Taste:', key);
+  // Keypad PIN
+  if (line.startsWith('PIN_ENTERED:')) {
+    const pin = line.substring(12).trim();
+    console.log('[KEYPAD] PIN eingegeben:', pin);
 
-    // Beispiel: Spind 1 auf besetzt setzen
-    axios.post('http://localhost:3008/api/lockers/1/status', { status: 'besetzt' })
+    // Backend: Spindstatus auf besetzt setzen mit PIN-Code
+    axios.post('http://localhost:3008/api/lockers/1/status', { 
+      status: 'besetzt', 
+      auth_method: 'PIN',
+      code: pin
+    })
       .then(res => console.log('[Backend]', res.data.message))
       .catch(err => console.error('[Backend] Fehler', err.message));
   }
@@ -82,6 +91,13 @@ function handleSlaveInput(line) {
   // Motor-Feedback
   if (line === 'MOTOR:OPENED') console.log('[Motor] Spind geöffnet');
   if (line === 'MOTOR:CLOSED') console.log('[Motor] Spind geschlossen');
+
+  // Masterstatus von Arduino übernehmen
+  if (line.startsWith('STATUS:')) {
+    const status = line.substring(7).trim();
+    console.log('[MASTER] ACK: Neuer Status gespeichert:', status);
+    updateLockerLed(status);
+  }
 }
 
 module.exports = {

@@ -26,10 +26,6 @@ async function initializeDatabase() {
 
     const sqlSchema = await fs.readFile(SQL_SCHEMA_PATH, 'utf-8');
     await rootConnection.query(`USE \`${DB_NAME}\`; ${sqlSchema}`);
-
-    // Prüfen, ob Spalte "code" existiert, sonst hinzufügen
-    await rootConnection.query(`ALTER TABLE spind ADD COLUMN IF NOT EXISTS code VARCHAR(10) DEFAULT NULL;`);
-
     await rootConnection.end();
 
     pool = mysql.createPool({
@@ -72,13 +68,18 @@ async function createMany(numbers) {
   if (!numbers.length) return [];
   const conn = getPool();
   const values = numbers.map(n => [n, 'frei', null]);
-  const [result] = await conn.query(`INSERT INTO spind (nummer, status, code) VALUES ?`, [values]);
+  const [result] = await conn.query(
+    `INSERT INTO spind (nummer, status, code) VALUES ?`,
+    [values]
+  );
   return result.insertId;
 }
 
 // === Statusänderung mit Arduino-Benachrichtigung ===
 async function updateLockerStatus(lockerId, status, code = null) {
   const conn = getPool();
+
+  // Status + PIN-Code in DB speichern
   await conn.query(
     `UPDATE spind SET status = :status, code = :code WHERE id = :id`,
     { id: lockerId, status, code }
@@ -88,14 +89,33 @@ async function updateLockerStatus(lockerId, status, code = null) {
   updateLockerLed(status);
 
   // === Arduino 2: Motorsteuerung ===
-  // Tür auf, wenn frei; Tür zu, wenn reserviert oder besetzt
   if (status === 'frei') {
-    controlMotor('OPEN'); // Spind auf
+    controlMotor('CLOSE'); // Spind zu
   } else {
-    controlMotor('CLOSE');  // Spind zu
+    controlMotor('OPEN');  // Spind auf
   }
 
-  console.log(`[MASTER] ACK: Neuer Status gespeichert: ${status} ${code ? '(Code gesetzt)' : ''}`);
+  return true;
+}
+
+// === Spind per PIN öffnen ===
+async function openLockerWithPin(lockerId, pinCode) {
+  const locker = await getById(lockerId);
+  if (!locker) throw new Error('Spind nicht gefunden');
+  if (locker.status !== 'frei' && locker.status !== 'reserviert') throw new Error('Spind nicht frei/reserviert');
+  if (!pinCode || pinCode.length !== 4) throw new Error('PIN muss 4-stellig sein');
+
+  await updateLockerStatus(lockerId, 'besetzt', pinCode);
+  return true;
+}
+
+// === Spind per RFID öffnen ===
+async function openLockerWithRFID(lockerId) {
+  const locker = await getById(lockerId);
+  if (!locker) throw new Error('Spind nicht gefunden');
+  if (locker.status !== 'frei' && locker.status !== 'reserviert') throw new Error('Spind nicht frei/reserviert');
+
+  await updateLockerStatus(lockerId, 'besetzt', null);
   return true;
 }
 
@@ -106,5 +126,7 @@ module.exports = {
   getAll,
   createMany,
   updateLockerStatus,
+  openLockerWithPin,
+  openLockerWithRFID,
   pool,
 };

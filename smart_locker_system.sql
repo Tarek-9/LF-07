@@ -2,7 +2,7 @@
 --
 -- Host: localhost    Database: smart_locker_system
 -- ------------------------------------------------------
--- Server version	9.4.0
+-- Server version  9.4.0
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -15,9 +15,9 @@
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
---
+-- ------------------------------------------------------
 -- Table structure for table `aktion`
---
+-- ------------------------------------------------------
 
 DROP TABLE IF EXISTS `aktion`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -34,21 +34,11 @@ CREATE TABLE `aktion` (
   KEY `fk_aktion_spind` (`spind_id`),
   CONSTRAINT `fk_aktion_benutzer` FOREIGN KEY (`benutzer_id`) REFERENCES `benutzer` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_aktion_spind` FOREIGN KEY (`spind_id`) REFERENCES `spind` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci ;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `aktion`
---
-
-LOCK TABLES `aktion` WRITE;
-/*!40000 ALTER TABLE `aktion` DISABLE KEYS */;
-/*!40000 ALTER TABLE `aktion` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
+-- ------------------------------------------------------
 -- Table structure for table `benutzer`
---
+-- ------------------------------------------------------
 
 DROP TABLE IF EXISTS `benutzer`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -62,21 +52,11 @@ CREATE TABLE `benutzer` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `rfid_code` (`rfid_code`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci ;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `benutzer`
---
-
-LOCK TABLES `benutzer` WRITE;
-/*!40000 ALTER TABLE `benutzer` DISABLE KEYS */;
-/*!40000 ALTER TABLE `benutzer` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
+-- ------------------------------------------------------
 -- Table structure for table `display`
---
+-- ------------------------------------------------------
 
 DROP TABLE IF EXISTS `display`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -90,21 +70,11 @@ CREATE TABLE `display` (
   PRIMARY KEY (`id`),
   KEY `fk_display_spind` (`spind_id`),
   CONSTRAINT `fk_display_spind` FOREIGN KEY (`spind_id`) REFERENCES `spind` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci ;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `display`
---
-
-LOCK TABLES `display` WRITE;
-/*!40000 ALTER TABLE `display` DISABLE KEYS */;
-/*!40000 ALTER TABLE `display` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
+-- ------------------------------------------------------
 -- Table structure for table `sensor`
---
+-- ------------------------------------------------------
 
 DROP TABLE IF EXISTS `sensor`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -118,21 +88,11 @@ CREATE TABLE `sensor` (
   PRIMARY KEY (`id`),
   KEY `fk_sensor_spind` (`spind_id`),
   CONSTRAINT `fk_sensor_spind` FOREIGN KEY (`spind_id`) REFERENCES `spind` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci ;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `sensor`
---
-
-LOCK TABLES `sensor` WRITE;
-/*!40000 ALTER TABLE `sensor` DISABLE KEYS */;
-/*!40000 ALTER TABLE `sensor` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
+-- ------------------------------------------------------
 -- Table structure for table `spind`
---
+-- ------------------------------------------------------
 
 DROP TABLE IF EXISTS `spind`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -141,51 +101,34 @@ CREATE TABLE `spind` (
   `id` int NOT NULL AUTO_INCREMENT,
   `nummer` int NOT NULL,
   `status` enum('frei','besetzt','reserviert') DEFAULT 'frei',
+  `code` varchar(10) DEFAULT NULL,  -- NEU: PIN-Code
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `nummer` (`nummer`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci ;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `spind`
---
+-- ------------------------------------------------------
+-- Table structure for table `cardnumber`
+-- ------------------------------------------------------
 
 DROP TABLE IF EXISTS `cardnumber`;
 CREATE TABLE cardnumber (
-`id` INT NOT NULL AUTO_INCREMENT,
-`nummer` VARCHAR(64) NOT NULL,
-PRIMARY KEY (`id`),
-UNIQUE KEY `uk_cardnumber_nummer` (`nummer`)
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `nummer` VARCHAR(64) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_cardnumber_nummer` (`nummer`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ------------------------------------------------------
+-- Example data
+-- ------------------------------------------------------
 
-LOCK TABLES `spind` WRITE;
-/*!40000 ALTER TABLE `spind` DISABLE KEYS */;
-/*!40000 ALTER TABLE `spind` ENABLE KEYS */;
-UNLOCK TABLES;
-/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
-
-/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
-/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
-/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
-
--- Dump completed on 2025-10-05 16:37:53
-
--- 1. ZWEI TESTBENUTZER HINZUFÜGEN (Wichtig für die Auth-Middleware)
+-- Test-Benutzer
 INSERT INTO benutzer (id, username) VALUES 
 (101, 'TestUser101'), 
 (102, 'TestUser102');
 
--- 2. ZWEI SPINDE HINZUFÜGEN (Für die Locker-ID-Tests)
--- Spind 1: ID 1 (Der Standard, den wir testen)
-INSERT INTO spind (id, nummer, status) 
-VALUES (1, 101, 'frei'); 
-
--- Spind 2: ID 2 (Ein weiterer Spind)
-INSERT INTO spind (id, nummer, status) 
-VALUES (2, 102, 'frei');
+-- Test-Spinde
+INSERT INTO spind (id, nummer, status) VALUES
+(1, 101, 'frei'),
+(2, 102, 'frei');
