@@ -2,34 +2,25 @@
 const express = require('express');
 const cors = require('cors');
 const lockerRoutes = require('./routes/locker.routes');
-const { initializeDatabase, createMany, getAll, pool } = require('./models/locker.model');
+const { connectMaster, connectSlave } = require('./services/arduino.service');
+const { initializeDatabase } = require('./models/locker.model');
 
-const PORT = 3008;
 const app = express();
+const PORT = 3008;
 
 app.use(cors());
 app.use(express.json());
-
-// API-Routen
 app.use('/api', lockerRoutes);
 
-async function startServer() {
+async function start() {
   try {
-    // DB initialisieren
     await initializeDatabase();
-
-    // Standard-Spinde anlegen, falls noch keine existieren
-    const existing = await getAll();
-    if (existing.length === 0) {
-      await createMany([1,2,3,4,5,6,7,8,9,10]);
-      console.log('[DB] 10 Standard-Spinde angelegt');
-    }
-
-    app.listen(PORT, () => console.log(`[Express] Läuft auf Port ${PORT}`));
+    await connectMaster();
+    await connectSlave();
+    app.listen(PORT, () => console.log(`[Express] läuft auf Port ${PORT}`));
   } catch (err) {
-    console.error('[Server Start] Fehler:', err);
-    process.exit(1);
+    console.error('[Server] Fehler beim Start:', err);
   }
 }
 
-startServer();
+start();
