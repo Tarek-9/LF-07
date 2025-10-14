@@ -13,6 +13,7 @@ async function startServer() {
   try {
     // DB initialisieren
     await initializeDatabase();
+    console.log('[DB] Pool initialisiert');
 
     const app = express();
     app.use(cors());
