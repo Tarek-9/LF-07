@@ -12,7 +12,8 @@ async function connectMaster() {
     masterPort = new SerialPort({ path: '/dev/ttyACM0', baudRate: 9600 });
     masterParser = masterPort.pipe(new ReadlineParser({ delimiter: '\n' }));
     masterParser.on('data', (line) => {
-      console.log('[MASTER]', line.trim());
+      line = line.trim();
+      console.log('[MASTER DATA]', line);
     });
     console.log('✅ Master verbunden: /dev/ttyACM0');
   } catch (err) {
@@ -27,7 +28,7 @@ async function connectSlave() {
     slaveParser = slavePort.pipe(new ReadlineParser({ delimiter: '\n' }));
     slaveParser.on('data', (line) => {
       line = line.trim();
-      console.log('[SLAVE]', line);
+      console.log('[SLAVE DATA]', line);
       handleSlaveInput(line);
     });
     console.log('✅ Slave verbunden: /dev/ttyACM1');
@@ -38,20 +39,28 @@ async function connectSlave() {
 
 // Master LED steuern (Status anzeigen)
 function updateLockerLed(status) {
-  if (!masterPort || !masterPort.writable)
-    return console.warn('[updateLockerLed] Kein Master verbunden');
+  if (!masterPort || !masterPort.writable) {
+    console.warn('[updateLockerLed] Kein Master verbunden');
+    return;
+  }
   const cmd = `STATUS:${status}\n`;
-  console.log('[MASTER CMD]', cmd);
-  masterPort.write(cmd);
+  console.log('[MASTER CMD]', cmd.trim());
+  masterPort.write(cmd, (err) => {
+    if (err) console.error('[MASTER CMD ERROR]', err.message);
+  });
 }
 
 // Motor steuern
 function controlMotor(action) {
-  if (!slavePort || !slavePort.writable)
-    return console.warn('[controlMotor] Kein Slave verbunden');
+  if (!slavePort || !slavePort.writable) {
+    console.warn('[controlMotor] Kein Slave verbunden');
+    return;
+  }
   const cmd = `MOTOR:${action}\n`;
-  console.log('[SLAVE CMD]', cmd);
-  slavePort.write(cmd);
+  console.log('[SLAVE CMD]', cmd.trim());
+  slavePort.write(cmd, (err) => {
+    if (err) console.error('[SLAVE CMD ERROR]', err.message);
+  });
 }
 
 // Slave Input (RFID/PIN) verarbeiten
@@ -63,39 +72,37 @@ function handleSlaveInput(line) {
     const tag = line.substring(5).trim();
     console.log('[RFID] Karte erkannt:', tag);
 
-    // Backend: Spindstatus auf besetzt setzen
     axios.post('http://localhost:3008/api/lockers/1/status', { 
       status: 'besetzt', 
       auth_method: 'RFID',
       code: tag
     })
-      .then(res => console.log('[Backend]', res.data.message))
-      .catch(err => console.error('[Backend] Fehler', err.message));
+    .then(res => console.log('[Backend] Antwort:', res.data.message || res.data))
+    .catch(err => console.error('[Backend] Fehler beim Senden:', err.message));
   }
 
   // Keypad PIN
-  if (line.startsWith('PIN_ENTERED:')) {
+  else if (line.startsWith('PIN_ENTERED:')) {
     const pin = line.substring(12).trim();
     console.log('[KEYPAD] PIN eingegeben:', pin);
 
-    // Backend: Spindstatus auf besetzt setzen mit PIN-Code
     axios.post('http://localhost:3008/api/lockers/1/status', { 
       status: 'besetzt', 
       auth_method: 'PIN',
       code: pin
     })
-      .then(res => console.log('[Backend]', res.data.message))
-      .catch(err => console.error('[Backend] Fehler', err.message));
+    .then(res => console.log('[Backend] Antwort:', res.data.message || res.data))
+    .catch(err => console.error('[Backend] Fehler beim Senden:', err.message));
   }
 
   // Motor-Feedback
-  if (line === 'MOTOR:OPENED') console.log('[Motor] Spind geöffnet');
-  if (line === 'MOTOR:CLOSED') console.log('[Motor] Spind geschlossen');
+  else if (line === 'MOTOR:OPENED') console.log('[Motor] Spind geöffnet');
+  else if (line === 'MOTOR:CLOSED') console.log('[Motor] Spind geschlossen');
 
-  // Masterstatus von Arduino übernehmen
-  if (line.startsWith('STATUS:')) {
+  // Status-Update von Arduino übernehmen
+  else if (line.startsWith('STATUS:')) {
     const status = line.substring(7).trim();
-    console.log('[MASTER] ACK: Neuer Status gespeichert:', status);
+    console.log('[MASTER STATUS] Neuer Status:', status);
     updateLockerLed(status);
   }
 }
