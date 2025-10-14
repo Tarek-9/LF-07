@@ -15,7 +15,7 @@ router.get('/lockers', async (req, res) => {
   }
 });
 
-// --- Status setzen (für Arduino-Service) ---
+// --- Status setzen ---
 router.post('/lockers/:id/status', async (req, res) => {
   const lockerId = Number(req.params.id);
   const { status } = req.body;
@@ -25,12 +25,7 @@ router.post('/lockers/:id/status', async (req, res) => {
 
   try {
     await updateLockerStatus(lockerId, status);
-    updateLockerLed(lockerId, status); // Master Arduino aktualisieren
-
-    // Motor nur bei besetzt/frei steuern (optional)
-    if (status === 'besetzt') controlMotor(lockerId, 'OPEN');
-    if (status === 'frei') controlMotor(lockerId, 'CLOSE');
-
+    updateLockerLed(status); // Master-Arduino aktualisieren
     res.json({ ok: true, message: `Spind ${lockerId} auf ${status}` });
   } catch (err) {
     console.error('[API] Fehler /status:', err);
@@ -43,8 +38,7 @@ router.post('/lockers/:id/reserve', async (req, res) => {
   const lockerId = Number(req.params.id);
   try {
     await updateLockerStatus(lockerId, 'reserviert');
-    updateLockerLed(lockerId, 'reserviert');
-    // Motor nicht öffnen, nur Anzeige
+    updateLockerLed('reserviert'); // Master-LED aktualisieren
     res.json({ ok: true });
   } catch (err) {
     console.error('[API] Fehler reservieren:', err);
@@ -57,8 +51,8 @@ router.post('/lockers/:id/occupy', async (req, res) => {
   const lockerId = Number(req.params.id);
   try {
     await updateLockerStatus(lockerId, 'besetzt');
-    updateLockerLed(lockerId, 'besetzt');
-    controlMotor(lockerId, 'OPEN'); // Motor öffnen
+    updateLockerLed('besetzt');   // Master-LED aktualisieren
+    controlMotor('OPEN');          // Motor am Slave öffnen
     res.json({ ok: true });
   } catch (err) {
     console.error('[API] Fehler besetzen:', err);
@@ -71,8 +65,8 @@ router.post('/lockers/:id/release', async (req, res) => {
   const lockerId = Number(req.params.id);
   try {
     await updateLockerStatus(lockerId, 'frei');
-    updateLockerLed(lockerId, 'frei');
-    controlMotor(lockerId, 'CLOSE'); // Motor schließen
+    updateLockerLed('frei');       // Master-LED aktualisieren
+    controlMotor('CLOSE');         // Motor am Slave schließen
     res.json({ ok: true });
   } catch (err) {
     console.error('[API] Fehler freigeben:', err);
