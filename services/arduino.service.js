@@ -1,69 +1,72 @@
-// services/arduino.service.js
-const { SerialPort } = require('serialport');
-const { ReadlineParser } = require('@serialport/parser-readline');
-const axios = require('axios');
+// routes/locker.routes.js
+const express = require('express');
+const router = express.Router();
+const { getAll, updateLockerStatus } = require('../models/locker.model');
 
-let masterPort, masterParser;
-let slavePort, slaveParser;
+// --- Alle Spinde abrufen ---
+router.get('/lockers', async (req, res) => {
+  try {
+    const lockers = await getAll();
+    res.json({ lockers });
+  } catch (err) {
+    console.error('[API] Fehler /lockers:', err);
+    res.status(500).send('DB Fehler');
+  }
+});
 
-// ========== Master (LED/LCD/PIR) ==========
-async function connectMaster() {
-  masterPort = new SerialPort({ path: '/dev/ttyACM0', baudRate: 9600 });
-  masterParser = masterPort.pipe(new ReadlineParser({ delimiter: '\n' }));
-  masterParser.on('data', (line) => console.log('[MASTER]', line.trim()));
-  console.log('✅ Master verbunden: /dev/ttyACM0');
-}
+// --- Status setzen (für Arduino-Service) ---
+router.post('/lockers/:id/status', async (req, res) => {
+  const lockerId = Number(req.params.id);
+  const { status } = req.body;
 
-// ========== Slave (RFID/Motor/Keypad) ==========
-async function connectSlave() {
-  slavePort = new SerialPort({ path: '/dev/ttyACM1', baudRate: 9600 });
-  slaveParser = slavePort.pipe(new ReadlineParser({ delimiter: '\n' }));
-  slaveParser.on('data', (line) => handleSlaveInput(line.trim()));
-  console.log('✅ Slave verbunden: /dev/ttyACM1');
-}
-
-// --- Master LED/Display aktualisieren ---
-function updateLockerLed(status) {
-  if (!masterPort || !masterPort.writable) return;
-  const cmd = `STATUS:${status}\n`;
-  masterPort.write(cmd);
-}
-
-// --- Motor steuern ---
-function controlMotor(action) {
-  if (!slavePort || !slavePort.writable) return;
-  const cmd = `MOTOR:${action}\n`;
-  slavePort.write(cmd);
-}
-
-// --- Slave Input verarbeiten ---
-function handleSlaveInput(line) {
-  // RFID
-  if (line.startsWith('RFID:')) {
-    const tag = line.substring(5).trim();
-    console.log('[RFID] Karte erkannt:', tag);
-    axios.post('http://localhost:3008/api/lockers/1/status', { status: 'besetzt' })
-      .then(res => console.log('[Backend]', res.data.message))
-      .catch(err => console.error('[Backend] Fehler', err.message));
+  if (!['frei', 'reserviert', 'besetzt'].includes(status)) {
+    return res.status(400).json({ ok: false, message: 'Ungültiger Status' });
   }
 
-  // Keypad
-  if (line.startsWith('KEY:')) {
-    const key = line.substring(4).trim();
-    console.log('[KEYPAD] Taste:', key);
-    axios.post('http://localhost:3008/api/lockers/1/status', { status: 'besetzt' })
-      .then(res => console.log('[Backend]', res.data.message))
-      .catch(err => console.error('[Backend] Fehler', err.message));
+  try {
+    // Status in DB ändern + Arduinos benachrichtigen
+    await updateLockerStatus(lockerId, status);
+    res.json({ ok: true, message: `Spind ${lockerId} auf ${status}` });
+  } catch (err) {
+    console.error('[API] Fehler /status:', err);
+    res.status(500).json({ ok: false, message: 'DB Fehler' });
   }
+});
 
-  // Motor Feedback
-  if (line === 'MOTOR:OPENED') console.log('[Motor] Spind geöffnet');
-  if (line === 'MOTOR:CLOSED') console.log('[Motor] Spind geschlossen');
-}
+// --- Spind reservieren ---
+router.post('/lockers/:id/reserve', async (req, res) => {
+  const lockerId = Number(req.params.id);
+  try {
+    await updateLockerStatus(lockerId, 'reserviert');
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[API] Fehler reservieren:', err);
+    res.status(500).json({ ok: false });
+  }
+});
 
-module.exports = {
-  connectMaster,
-  connectSlave,
-  updateLockerLed,
-  controlMotor,
-};
+// --- Spind belegen ---
+router.post('/lockers/:id/occupy', async (req, res) => {
+  const lockerId = Number(req.params.id);
+  try {
+    await updateLockerStatus(lockerId, 'besetzt');
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[API] Fehler besetzen:', err);
+    res.status(500).json({ ok: false });
+  }
+});
+
+// --- Spind freigeben ---
+router.post('/lockers/:id/release', async (req, res) => {
+  const lockerId = Number(req.params.id);
+  try {
+    await updateLockerStatus(lockerId, 'frei');
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[API] Fehler freigeben:', err);
+    res.status(500).json({ ok: false });
+  }
+});
+
+module.exports = router;

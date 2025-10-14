@@ -2,6 +2,7 @@
 const mysql = require('mysql2/promise');
 const fs = require('fs/promises');
 const path = require('path');
+const { updateLockerLed, controlMotor } = require('../services/arduino.service');
 
 const SQL_SCHEMA_PATH = path.join(__dirname, '..', 'smart_locker_system.sql');
 
@@ -50,7 +51,7 @@ function getPool() {
   return pool;
 }
 
-// CRUD-Funktionen
+// === CRUD-Funktionen ===
 async function getById(id) {
   const conn = getPool();
   const [rows] = await conn.query(`SELECT * FROM spind WHERE id = :id`, { id });
@@ -71,9 +72,21 @@ async function createMany(numbers) {
   return result.insertId;
 }
 
+// === Statusänderung mit Arduino-Benachrichtigung ===
 async function updateLockerStatus(lockerId, status) {
   const conn = getPool();
   await conn.query(`UPDATE spind SET status = :status WHERE id = :id`, { id: lockerId, status });
+
+  // === Arduino 1: LEDs/LCD/PIR ===
+  updateLockerLed(status);
+
+  // === Arduino 2: Motorsteuerung (nur öffnen wenn frei/reserviert/belegt) ===
+  if (status === 'frei') {
+    controlMotor('CLOSE'); // Spind zu
+  } else {
+    controlMotor('OPEN');  // Spind auf
+  }
+
   return true;
 }
 
