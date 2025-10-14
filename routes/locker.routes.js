@@ -58,4 +58,23 @@ router.post('/lockers/:id/release', async (req, res) => {
   }
 });
 
+// routes/locker.routes.js
+router.post('/lockers/:id/status', async (req, res) => {
+  const lockerId = Number(req.params.id);
+  const { status } = req.body;
+
+  if (!['frei','reserviert','besetzt'].includes(status)) {
+    return res.status(400).json({ ok: false, message: 'Ungültiger Status' });
+  }
+
+  try {
+    await updateLockerStatus(lockerId, status);
+    return res.json({ ok: true, message: `Spind ${lockerId} auf ${status}` });
+  } catch (err) {
+    console.error('[API] Fehler /status:', err);
+    return res.status(500).json({ ok: false, message: 'DB Fehler' });
+  }
+});
+
+
 module.exports = router;
