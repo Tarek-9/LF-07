@@ -1,51 +1,69 @@
-// src/services/arduino.service.js
+// services/arduino.service.js
 const { SerialPort } = require('serialport');
+const { ReadlineParser } = require('@serialport/parser-readline');
 
-const ARDUINO_PORT = '/dev/ttyACM0'; // ggf. mit "ls /dev/tty*" prüfen
-const BAUD_RATE = 9600;
+let masterPort, masterParser;
+let slavePort, slaveParser;
 
-let port = null;
-
-// === Verbindung zum Arduino ===
-try {
-  port = new SerialPort({ path: ARDUINO_PORT, baudRate: BAUD_RATE });
-  port.on('open', () => console.log('✅ Arduino verbunden:', ARDUINO_PORT));
-  port.on('error', (err) => console.error('❌ Arduino Fehler:', err.message));
-} catch (e) {
-  console.error('⚠️ Konnte seriellen Port nicht öffnen:', e.message);
-}
-
-/**
- * Sendet den Status an den Arduino im Format "STATUS:<wert>"
- */
-function sendStatus(status) {
-  if (!port || !port.writable) {
-    console.error('❌ Kein offener Port zum Arduino.', port);
-    return;
+// ========== Master (LED/LCD/PIR) ==========
+async function connectMaster() {
+  try {
+    masterPort = new SerialPort({ path: '/dev/ttyACM0', baudRate: 9600 });
+    masterParser = masterPort.pipe(new ReadlineParser({ delimiter: '\n' }));
+    masterParser.on('data', (line) => {
+      console.log('[MASTER]', line.trim());
+    });
+    console.log('✅ Master verbunden: /dev/ttyACM0');
+  } catch (err) {
+    console.error('❌ Master konnte nicht verbunden werden:', err);
   }
-
-  const cmd = `STATUS:${status}\n`;
-  port.write(cmd, (err) => {
-    if (err) console.error('Fehler beim Senden an Arduino:', err.message);
-    else console.log('[Arduino] →', cmd.trim());
-  });
 }
 
-/**
- * Wird vom Backend aufgerufen, um den LED-Status zu aktualisieren.
- */
+// ========== Slave (RFID/Motor/Keypad) ==========
+async function connectSlave() {
+  try {
+    slavePort = new SerialPort({ path: '/dev/ttyACM1', baudRate: 9600 });
+    slaveParser = slavePort.pipe(new ReadlineParser({ delimiter: '\n' }));
+    slaveParser.on('data', (line) => {
+      console.log('[SLAVE]', line.trim());
+      handleSlaveInput(line.trim());
+    });
+    console.log('✅ Slave verbunden: /dev/ttyACM1');
+  } catch (err) {
+    console.error('❌ Slave konnte nicht verbunden werden:', err);
+  }
+}
+
+// Beispiel: RFID oder Keypad sendet was
+function handleSlaveInput(line) {
+  if (line.startsWith('RFID:')) {
+    const tag = line.substring(5).trim();
+    console.log(`[RFID] Karte erkannt: ${tag}`);
+  }
+  if (line === 'MOTOR:OPENED') {
+    console.log('[Motor] Spind geöffnet');
+  }
+}
+
+// Master LED steuern (Status anzeigen)
 function updateLockerLed(status) {
-  // Sicherheitshalber nur die drei erwarteten Werte
-  const validStatuses = ['frei', 'reserviert', 'besetzt'];
-  if (!validStatuses.includes(status)) {
-    console.warn(`⚠️ Unbekannter Status: ${status}`), status;
-    return;
-  }
+  if (!masterPort || !masterPort.writable)
+    return console.warn('[updateLockerLed] Kein Master verbunden');
+  const cmd = `STATUS:${status}\n`;
+  masterPort.write(cmd);
+}
 
-  sendStatus(status);
+// Slave Motor steuern (z. B. öffnen/schließen)
+function controlMotor(action) {
+  if (!slavePort || !slavePort.writable)
+    return console.warn('[controlMotor] Kein Slave verbunden');
+  const cmd = `MOTOR:${action}\n`;
+  slavePort.write(cmd);
 }
 
 module.exports = {
-  sendStatus,
-  updateLockerLed, // <-- GANZ WICHTIG!
+  connectMaster,
+  connectSlave,
+  updateLockerLed,
+  controlMotor,
 };

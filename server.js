@@ -9,6 +9,12 @@ const app = express();
 // Wir importieren die initializeDatabase Funktion jetzt aus dem Model
 const lockerModel = require('./models/locker.model');
 const { initializeDatabase } = lockerModel;
+const { connectMaster, connectSlave } = require('./services/arduino.service');
+
+(async () => {
+  await connectMaster();
+  await connectSlave();
+})();
 
 // --- DB INITIALISIERUNGS-KONFIGURATION ---
 const DB_HOST = process.env.DB_HOST || '127.0.0.1';
