@@ -9,8 +9,8 @@ const SQL_SCHEMA_PATH = path.join(__dirname, '..', 'smart_locker_system.sql');
 let pool = null;
 
 const DB_HOST = process.env.DB_HOST || '127.0.0.1';
-const DB_USER = process.env.DB_USER || 'root';
-const DB_PASS = process.env.DB_PASS || '';
+const DB_USER = process.env.DB_USER || 'lockeruser';
+const DB_PASS = process.env.DB_PASS || 'lockerpass';
 const DB_NAME = process.env.DB_NAME || 'smart_locker_system';
 
 async function initializeDatabase() {
