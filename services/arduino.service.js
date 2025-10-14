@@ -44,11 +44,11 @@ function updateLockerLed(status) {
   masterPort.write(cmd);
 }
 
-// Motor steuern
-function controlMotor(action) {
+// Status an Slave senden, Motorsteuerung
+function controlMotor(status) {
   if (!slavePort || !slavePort.writable)
     return console.warn('[controlMotor] Kein Slave verbunden');
-  const cmd = `MOTOR:${action}\n`;
+  const cmd = `STATUS:${status}\n`; // <-- Status, nicht MOTOR:OPEN/CLOSE
   console.log('[SLAVE CMD]', cmd);
   slavePort.write(cmd);
 }
@@ -62,7 +62,6 @@ function handleSlaveInput(line) {
     const tag = line.substring(5).trim();
     console.log('[RFID] Karte erkannt:', tag);
 
-    // Beispiel: Spind 1 auf besetzt setzen
     axios.post('http://localhost:3008/api/lockers/1/status', { status: 'besetzt' })
       .then(res => console.log('[Backend]', res.data.message))
       .catch(err => console.error('[Backend] Fehler', err.message));
@@ -73,13 +72,12 @@ function handleSlaveInput(line) {
     const key = line.substring(4).trim();
     console.log('[KEYPAD] Taste:', key);
 
-    // Beispiel: Spind 1 auf besetzt setzen
     axios.post('http://localhost:3008/api/lockers/1/status', { status: 'besetzt' })
       .then(res => console.log('[Backend]', res.data.message))
       .catch(err => console.error('[Backend] Fehler', err.message));
   }
 
-  // Motor-Feedback
+  // Motor Feedback
   if (line === 'MOTOR:OPENED') console.log('[Motor] Spind geöffnet');
   if (line === 'MOTOR:CLOSED') console.log('[Motor] Spind geschlossen');
 }
