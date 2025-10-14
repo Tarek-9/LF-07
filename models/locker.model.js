@@ -2,7 +2,6 @@
 const mysql = require('mysql2/promise');
 const fs = require('fs/promises');
 const path = require('path');
-const { updateLockerLed } = require('../services/arduino.service');
 
 const SQL_SCHEMA_PATH = path.join(__dirname, '..', 'smart_locker_system.sql');
 
@@ -51,29 +50,16 @@ function getPool() {
   return pool;
 }
 
-// === CRUD-Funktionen ===
-
+// CRUD-Funktionen
 async function getById(id) {
   const conn = getPool();
   const [rows] = await conn.query(`SELECT * FROM spind WHERE id = :id`, { id });
   return rows[0] || null;
 }
 
-async function getAll({ status, onlyAvailable } = {}) {
+async function getAll() {
   const conn = getPool();
-  let sql = `SELECT * FROM spind`;
-  const params = {};
-  const where = [];
-
-  if (status) {
-    where.push(`status = :status`);
-    params.status = status;
-  }
-
-  if (where.length) sql += ` WHERE ` + where.join(' AND ');
-  sql += ` ORDER BY nummer ASC`;
-
-  const [rows] = await conn.query(sql, params);
+  const [rows] = await conn.query(`SELECT * FROM spind ORDER BY nummer ASC`);
   return rows;
 }
 
@@ -88,7 +74,6 @@ async function createMany(numbers) {
 async function updateLockerStatus(lockerId, status) {
   const conn = getPool();
   await conn.query(`UPDATE spind SET status = :status WHERE id = :id`, { id: lockerId, status });
-  updateLockerLed(status);
   return true;
 }
 
@@ -99,4 +84,5 @@ module.exports = {
   getAll,
   createMany,
   updateLockerStatus,
+  pool,
 };

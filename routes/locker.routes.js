@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const { getAll, getById, updateLockerStatus } = require('../models/locker.model');
 
+// Alle Spinde abrufen
 router.get('/lockers', async (req, res) => {
   try {
     const lockers = await getAll();
@@ -13,6 +14,7 @@ router.get('/lockers', async (req, res) => {
   }
 });
 
+// Spind reservieren
 router.post('/lockers/:id/reserve', async (req, res) => {
   const lockerId = parseInt(req.params.id);
   try {
@@ -24,6 +26,7 @@ router.post('/lockers/:id/reserve', async (req, res) => {
   }
 });
 
+// Spind belegen
 router.post('/lockers/:id/occupy', async (req, res) => {
   const lockerId = parseInt(req.params.id);
   try {
@@ -35,6 +38,7 @@ router.post('/lockers/:id/occupy', async (req, res) => {
   }
 });
 
+// Spind freigeben
 router.post('/lockers/:id/release', async (req, res) => {
   const lockerId = parseInt(req.params.id);
   try {
