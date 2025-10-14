@@ -130,4 +130,4 @@ INSERT INTO benutzer (id, username) VALUES
 
 -- Test-Spinde
 INSERT INTO spind (id, nummer, status) VALUES
-(1, 101, 'frei'),
+(1, 101, 'frei');
