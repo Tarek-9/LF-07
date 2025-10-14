@@ -67,24 +67,34 @@ async function getAll() {
 async function createMany(numbers) {
   if (!numbers.length) return [];
   const conn = getPool();
-  const values = numbers.map(n => [n, 'frei']);
-  const [result] = await conn.query(`INSERT INTO spind (nummer, status) VALUES ?`, [values]);
+  const values = numbers.map(n => [n, 'frei', null]);
+  const [result] = await conn.query(`INSERT INTO spind (nummer, status, code) VALUES ?`, [values]);
   return result.insertId;
 }
 
 // === Statusänderung mit Arduino-Benachrichtigung ===
-async function updateLockerStatus(lockerId, status) {
+/**
+ * @param {number} lockerId
+ * @param {string} status - frei / reserviert / besetzt
+ * @param {string|null} code - optionaler 4-stelliger Zahlencode
+ */
+async function updateLockerStatus(lockerId, status, code = null) {
   const conn = getPool();
-  await conn.query(`UPDATE spind SET status = :status WHERE id = :id`, { id: lockerId, status });
+  await conn.query(
+    `UPDATE spind SET status = :status, code = :code WHERE id = :id`,
+    { id: lockerId, status, code }
+  );
 
-  // === Arduino 1: LEDs/LCD/PIR ===
+  console.log(`[MASTER] ACK: Neuer Status gespeichert: ${status}`);
+
+  // Master LED steuern
   updateLockerLed(status);
 
-  // === Arduino 2: Motorsteuerung (nur öffnen wenn frei/reserviert/belegt) ===
+  // Motorsteuerung: frei = offen, reserviert/besetzt = zu
   if (status === 'frei') {
-    controlMotor('CLOSE'); // Spind zu
+    controlMotor('OPEN');
   } else {
-    controlMotor('OPEN');  // Spind auf
+    controlMotor('CLOSE');
   }
 
   return true;

@@ -35,7 +35,7 @@ async function connectSlave() {
   }
 }
 
-// Master LED steuern (Status anzeigen)
+// Master LED / Status aktualisieren
 function updateLockerLed(status) {
   if (!masterPort || !masterPort.writable)
     return console.warn('[updateLockerLed] Kein Master verbunden');
@@ -44,16 +44,16 @@ function updateLockerLed(status) {
   masterPort.write(cmd);
 }
 
-// Motor steuern: Nur Status senden, keine einzelnen Key-Zahlen
-function updateLockerStatus(status) {
+// Motor steuern (OFFEN / ZU)
+function controlMotor(action) {
   if (!slavePort || !slavePort.writable)
-    return console.warn('[updateLockerStatus] Kein Slave verbunden');
-  const cmd = `STATUS:${status}\n`;
+    return console.warn('[controlMotor] Kein Slave verbunden');
+  const cmd = `MOTOR:${action}\n`;
   console.log('[SLAVE CMD]', cmd);
   slavePort.write(cmd);
 }
 
-// Slave Input (RFID/PIN) verarbeiten
+// Slave Input (RFID / Keypad) verarbeiten
 function handleSlaveInput(line) {
   if (!line) return;
 
@@ -62,24 +62,24 @@ function handleSlaveInput(line) {
     const tag = line.substring(5).trim();
     console.log('[RFID] Karte erkannt:', tag);
 
-    // Status auf besetzt setzen
-    axios.post('http://localhost:3008/api/lockers/1/status', { status: 'besetzt', type: 'rfid', code: tag })
+    // Beispiel: Spind 1 auf besetzt setzen
+    axios.post('http://localhost:3008/api/lockers/1/status', { status: 'besetzt' })
       .then(res => console.log('[Backend]', res.data.message))
       .catch(err => console.error('[Backend] Fehler', err.message));
   }
 
   // Keypad
-  if (line.startsWith('CODE SET:')) {
-    const code = line.substring(9).trim();
-    console.log('[KEYPAD] Code gesetzt:', code);
+  if (line.startsWith('KEY:')) {
+    const key = line.substring(4).trim();
+    console.log('[KEYPAD] Taste:', key);
 
-    // Status auf besetzt setzen
-    axios.post('http://localhost:3008/api/lockers/1/status', { status: 'besetzt', type: 'code', code })
+    // Beispiel: Spind 1 auf besetzt setzen
+    axios.post('http://localhost:3008/api/lockers/1/status', { status: 'besetzt' })
       .then(res => console.log('[Backend]', res.data.message))
       .catch(err => console.error('[Backend] Fehler', err.message));
   }
 
-  // Motor Feedback
+  // Motor-Feedback
   if (line === 'MOTOR:OPENED') console.log('[Motor] Spind geöffnet');
   if (line === 'MOTOR:CLOSED') console.log('[Motor] Spind geschlossen');
 }
@@ -88,5 +88,5 @@ module.exports = {
   connectMaster,
   connectSlave,
   updateLockerLed,
-  updateLockerStatus,
+  controlMotor,
 };
