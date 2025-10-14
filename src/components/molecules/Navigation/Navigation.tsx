@@ -12,6 +12,8 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from '@/components/ui/navigation-menu';
+import Image from 'next/image';
+import ProfileImage from '../../../../public/Profile.png';
 
 const Navigation = () => {
   return (
@@ -77,10 +79,10 @@ const Navigation = () => {
         <NavigationMenuItem>
           <NavigationMenuLink className='p-0' asChild>
             <Link href='/profile'>
-              <img
-                className='h-16 p-2 rounded-full'
-                src='https://api.samplefaces.com/face?width=200'
-                alt='Random Profile'
+              <Image
+                className='h-16 w-16 p-2 rounded-full'
+                src={ProfileImage}
+                alt='Profilbild'
               />
             </Link>
           </NavigationMenuLink>

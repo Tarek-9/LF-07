@@ -44,3 +44,8 @@ function updateLockerLed(status) {
 
   sendStatus(status);
 }
+
+module.exports = {
+  sendStatus,
+  updateLockerLed, // <-- GANZ WICHTIG!
+};
