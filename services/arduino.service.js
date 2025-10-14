@@ -44,11 +44,11 @@ function updateLockerLed(status) {
   masterPort.write(cmd);
 }
 
-// Status an Slave senden, Motorsteuerung
-function controlMotor(status) {
+// Motor steuern: Nur Status senden, keine einzelnen Key-Zahlen
+function updateLockerStatus(status) {
   if (!slavePort || !slavePort.writable)
-    return console.warn('[controlMotor] Kein Slave verbunden');
-  const cmd = `STATUS:${status}\n`; // <-- Status, nicht MOTOR:OPEN/CLOSE
+    return console.warn('[updateLockerStatus] Kein Slave verbunden');
+  const cmd = `STATUS:${status}\n`;
   console.log('[SLAVE CMD]', cmd);
   slavePort.write(cmd);
 }
@@ -62,17 +62,19 @@ function handleSlaveInput(line) {
     const tag = line.substring(5).trim();
     console.log('[RFID] Karte erkannt:', tag);
 
-    axios.post('http://localhost:3008/api/lockers/1/status', { status: 'besetzt' })
+    // Status auf besetzt setzen
+    axios.post('http://localhost:3008/api/lockers/1/status', { status: 'besetzt', type: 'rfid', code: tag })
       .then(res => console.log('[Backend]', res.data.message))
       .catch(err => console.error('[Backend] Fehler', err.message));
   }
 
   // Keypad
-  if (line.startsWith('KEY:')) {
-    const key = line.substring(4).trim();
-    console.log('[KEYPAD] Taste:', key);
+  if (line.startsWith('CODE SET:')) {
+    const code = line.substring(9).trim();
+    console.log('[KEYPAD] Code gesetzt:', code);
 
-    axios.post('http://localhost:3008/api/lockers/1/status', { status: 'besetzt' })
+    // Status auf besetzt setzen
+    axios.post('http://localhost:3008/api/lockers/1/status', { status: 'besetzt', type: 'code', code })
       .then(res => console.log('[Backend]', res.data.message))
       .catch(err => console.error('[Backend] Fehler', err.message));
   }
@@ -86,5 +88,5 @@ module.exports = {
   connectMaster,
   connectSlave,
   updateLockerLed,
-  controlMotor,
+  updateLockerStatus,
 };
