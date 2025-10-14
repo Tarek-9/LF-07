@@ -26,6 +26,10 @@ async function initializeDatabase() {
 
     const sqlSchema = await fs.readFile(SQL_SCHEMA_PATH, 'utf-8');
     await rootConnection.query(`USE \`${DB_NAME}\`; ${sqlSchema}`);
+
+    // Prüfen, ob Spalte "code" existiert, sonst hinzufügen
+    await rootConnection.query(`ALTER TABLE spind ADD COLUMN IF NOT EXISTS code VARCHAR(10) DEFAULT NULL;`);
+
     await rootConnection.end();
 
     pool = mysql.createPool({
@@ -73,11 +77,6 @@ async function createMany(numbers) {
 }
 
 // === Statusänderung mit Arduino-Benachrichtigung ===
-/**
- * @param {number} lockerId
- * @param {string} status - frei / reserviert / besetzt
- * @param {string|null} code - optionaler 4-stelliger Zahlencode
- */
 async function updateLockerStatus(lockerId, status, code = null) {
   const conn = getPool();
   await conn.query(
@@ -85,18 +84,18 @@ async function updateLockerStatus(lockerId, status, code = null) {
     { id: lockerId, status, code }
   );
 
-  console.log(`[MASTER] ACK: Neuer Status gespeichert: ${status}`);
-
-  // Master LED steuern
+  // === Arduino 1: LEDs/LCD/PIR ===
   updateLockerLed(status);
 
-  // Motorsteuerung: frei = offen, reserviert/besetzt = zu
+  // === Arduino 2: Motorsteuerung ===
+  // Tür auf, wenn frei; Tür zu, wenn reserviert oder besetzt
   if (status === 'frei') {
-    controlMotor('OPEN');
+    controlMotor('OPEN'); // Spind auf
   } else {
-    controlMotor('CLOSE');
+    controlMotor('CLOSE');  // Spind zu
   }
 
+  console.log(`[MASTER] ACK: Neuer Status gespeichert: ${status} ${code ? '(Code gesetzt)' : ''}`);
   return true;
 }
 
