@@ -83,13 +83,11 @@ export default function BookingPage() {
   return (
     <div className='p-6 space-y-4'>
       <h1 className='text-2xl font-semibold'>Spind-Buchung</h1>
-
       <div className='text-sm text-gray-600'>
         {loading
           ? 'Lade Spinde…'
           : `${places.length} Spinde, davon ${freeCount} frei`}
       </div>
-
       {error && (
         <div className='rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800'>
           {error}
@@ -106,7 +104,7 @@ export default function BookingPage() {
               className='rounded-xl border p-3 flex flex-col gap-2 shadow-sm'
             >
               <div className='flex items-center justify-between'>
-                <div className='font-medium'>#{place.name}</div>
+                <div className='font-medium'>#{place.id}</div>
                 <span
                   className={
                     'text-xs px-2 py-0.5 rounded-full ' +
@@ -142,6 +140,7 @@ export default function BookingPage() {
 
       <div className='pt-2'>
         <button
+          type='button'
           onClick={load}
           className='rounded-lg bg-gray-100 hover:bg-gray-200 px-4 py-2 text-sm'
         >
