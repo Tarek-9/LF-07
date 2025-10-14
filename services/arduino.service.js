@@ -65,6 +65,7 @@ function controlMotor(action) {
 
 // Slave Input (RFID/PIN) verarbeiten
 function handleSlaveInput(line) {
+  console.log('[DEBUG] Eingehende Zeile vom Slave:', line);
   if (!line) return;
 
   // RFID
