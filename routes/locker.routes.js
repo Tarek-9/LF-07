@@ -6,13 +6,21 @@ const { getAll, getById, updateLockerStatus } = require('../models/locker.model'
 // Alle Spinde abrufen
 router.get('/lockers', async (req, res) => {
   try {
-    const lockers = await getAll();
-    res.json(lockers);
+    const rows = await getAll();
+    // Backend sendet Objekt { lockers: [...] } statt nur Array
+    const lockers = rows.map(l => ({
+      id: l.id,
+      number: l.nummer,   // nummer → number
+      status: l.status,
+      created_at: l.created_at
+    }));
+    res.json({ lockers });
   } catch (err) {
     console.error('[API] Fehler /lockers:', err);
     res.status(500).send('DB-Pool nicht initialisiert');
   }
 });
+
 
 // Spind reservieren
 router.post('/lockers/:id/reserve', async (req, res) => {

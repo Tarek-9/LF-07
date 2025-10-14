@@ -120,6 +120,7 @@ export default function BookingPage() {
               </div>
 
               <button
+                type='button'
                 disabled={!canReserve || reservingId === place.id}
                 onClick={() => reserve(place.id)}
                 className={
