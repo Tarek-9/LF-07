@@ -1,34 +1,37 @@
-// server.js
+// server.js (komplett, ready-to-run)
+
+require('dotenv').config(); // Lädt .env Variablen
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const lockerRoutes = require('./routes/locker.routes');
 const { initializeDatabase } = require('./models/locker.model');
 
-// Routen importieren
-const lockerRoutes = require('./routes/locker.routes');
-
-const app = express();
 const PORT = process.env.PORT || 3008;
 
-app.use(cors());
-app.use(bodyParser.json());
-
-// DB initialisieren und danach Server starten
 async function startServer() {
   try {
+    // DB initialisieren
     await initializeDatabase();
-    console.log('[DB] Pool initialisiert');
 
-    // Routen mounten
+    const app = express();
+    app.use(cors());
+    app.use(bodyParser.json());
+
+    // --- Routes ---
     app.use('/api/lockers', lockerRoutes);
+
+    // Optional: Healthcheck
+    app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
     app.listen(PORT, () => {
       console.log(`[Express] Läuft auf Port ${PORT}`);
     });
   } catch (err) {
-    console.error('[Server Start] Fehler beim Initialisieren der Datenbank:', err);
+    console.error('[Server Start] Fehler beim Starten des Servers:', err);
     process.exit(1);
   }
 }
 
+// Start
 startServer();

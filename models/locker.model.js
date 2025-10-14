@@ -1,72 +1,77 @@
-// models/locker.model.js (FINAL, saubere Pool-Initialisierung)
+// models/locker.model.js (komplett, safe defaults & DB-Initialisierung)
 
 const mysql = require('mysql2/promise');
 const fs = require('fs/promises');
 const path = require('path');
 const { updateLockerLed } = require('../services/arduino.service');
 
-// --- Hilfsvariablen ---
+// --- HILFSVARIABLEN ---
 const SQL_SCHEMA_PATH = path.join(__dirname, '..', 'smart_locker_system.sql');
 let pool = null;
+
+// DB-Konfiguration mit sicheren Defaults
+const DB_HOST = process.env?.DB_HOST || '127.0.0.1';
+const DB_USER = process.env?.DB_USER || 'root';
+const DB_PASS = process.env?.DB_PASS || '';
+const DB_NAME = process.env?.DB_NAME || 'smart_locker_system';
 
 // =================================================================
 // DB INITIALISIERUNG
 // =================================================================
-async function initializeDatabase({ DB_HOST, DB_USER, DB_PASS, DB_NAME }) {
-  // Erst Verbindung als Root/Testuser, um DB + Schema anzulegen
-  const rootConnection = await mysql.createConnection({
-    host: DB_HOST,
-    user: DB_USER,
-    password: DB_PASS,
-    multipleStatements: true,
-  });
 
+async function initializeDatabase() {
   try {
+    const rootConnection = await mysql.createConnection({
+      host: DB_HOST,
+      user: DB_USER,
+      password: DB_PASS,
+      multipleStatements: true,
+    });
+
+    // Datenbank erstellen falls nicht vorhanden
     await rootConnection.execute(`CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;`);
+
+    // Schema einlesen und ausführen
     const sqlSchema = await fs.readFile(SQL_SCHEMA_PATH, 'utf-8');
     const fullSchemaSql = `USE \`${DB_NAME}\`;\n${sqlSchema}`;
     await rootConnection.query(fullSchemaSql);
-  } finally {
+
     await rootConnection.end();
+
+    // Pool erstellen
+    pool = mysql.createPool({
+      host: DB_HOST,
+      user: DB_USER,
+      password: DB_PASS,
+      database: DB_NAME,
+      waitForConnections: true,
+      connectionLimit: 10,
+      namedPlaceholders: true,
+      timezone: 'Z',
+    });
+
+    console.log('[DB] Pool initialisiert');
+  } catch (err) {
+    console.error('[Server Start] Fehler beim Initialisieren der Datenbank:', err);
+    throw err;
   }
-
-  // Dann den Pool initialisieren
-  pool = mysql.createPool({
-    host: DB_HOST,
-    user: DB_USER,
-    password: DB_PASS,
-    database: DB_NAME,
-    waitForConnections: true,
-    connectionLimit: 10,
-    namedPlaceholders: true,
-    timezone: 'Z',
-  });
-
-  console.log('[DB] Pool initialisiert');
 }
 
 // =================================================================
-// Pool getter
+// MODEL FUNKTIONEN
 // =================================================================
-function getPool() {
-  if (!pool) throw new Error('DB-Pool nicht initialisiert');
-  return pool;
-}
 
-// =================================================================
-// Modellfunktionen
-// =================================================================
-async function getById(id) {
-  const [rows] = await getPool().query(`SELECT * FROM spind WHERE id = :id`, { id });
+async function getById(id, conn = pool) {
+  const [rows] = await conn.query(`SELECT * FROM spind WHERE id = :id`, { id });
   return rows[0] || null;
 }
 
-async function getByNumber(number) {
-  const [rows] = await getPool().query(`SELECT * FROM spind WHERE nummer = :number`, { number });
+async function getByNumber(number, conn = pool) {
+  const [rows] = await conn.query(`SELECT * FROM spind WHERE nummer = :number`, { number });
   return rows[0] || null;
 }
 
-async function getAll({ status, onlyAvailable } = {}) {
+async function getAll({ status, onlyAvailable } = {}, conn = pool) {
   let sql = `SELECT * FROM spind`;
   const params = {};
   const where = [];
@@ -79,22 +84,22 @@ async function getAll({ status, onlyAvailable } = {}) {
   if (where.length) sql += ` WHERE ` + where.join(' AND ');
   sql += ` ORDER BY nummer ASC`;
 
-  const [rows] = await getPool().query(sql, params);
+  const [rows] = await conn.query(sql, params);
   return rows;
 }
 
-async function createMany(numbers = []) {
+async function createMany(numbers, conn = pool) {
   if (!numbers.length) return [];
-  const values = numbers.map((n) => [n, 'frei']);
-  const [result] = await getPool().query(`INSERT INTO spind (nummer, status) VALUES ?`, [values]);
+  const values = numbers.map(n => [n, 'frei']);
+  const [result] = await conn.query(
+    `INSERT INTO spind (nummer, status) VALUES ?`,
+    [values]
+  );
   return result.insertId;
 }
 
-// =================================================================
-// Locker-Status ändern
-// =================================================================
 async function reserveLocker({ lockerId }) {
-  const conn = await getPool().getConnection();
+  const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
 
@@ -124,7 +129,7 @@ async function reserveLocker({ lockerId }) {
 }
 
 async function occupyLocker({ lockerId }) {
-  const conn = await getPool().getConnection();
+  const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
 
@@ -154,7 +159,7 @@ async function occupyLocker({ lockerId }) {
 }
 
 async function releaseLocker({ lockerId }) {
-  const conn = await getPool().getConnection();
+  const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
 
@@ -179,11 +184,12 @@ async function releaseLocker({ lockerId }) {
 }
 
 // =================================================================
-// Exports
+// EXPORT
 // =================================================================
+
 module.exports = {
+  pool,
   initializeDatabase,
-  getPool,
   getById,
   getByNumber,
   getAll,
