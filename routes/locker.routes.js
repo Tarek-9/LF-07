@@ -1,84 +1,48 @@
 // routes/locker.routes.js
 const express = require('express');
 const router = express.Router();
-const {
-  getAll,
-  getById,
-  reserveLocker,
-  occupyLocker,
-  releaseLocker,
-} = require('../models/locker.model');
+const { getAll, getById, updateLockerStatus } = require('../models/locker.model');
 
-// --- Alle Spinde abrufen ---
-router.get('/', async (req, res) => {
+router.get('/lockers', async (req, res) => {
   try {
-    const lockers = await getAll({});
+    const lockers = await getAll();
     res.json(lockers);
   } catch (err) {
-    console.error('[Locker GET /] Fehler:', err);
-    res
-      .status(500)
-      .json({ error: 'DB-Pool nicht initialisiert oder Fehler beim Abrufen' });
+    console.error('[API] Fehler /lockers:', err);
+    res.status(500).send('DB-Pool nicht initialisiert');
   }
 });
 
-// --- Spind nach ID abrufen ---
-router.get('/:id', async (req, res) => {
+router.post('/lockers/:id/reserve', async (req, res) => {
+  const lockerId = parseInt(req.params.id);
   try {
-    const locker = await getById(Number(req.params.id));
-    if (!locker) return res.status(404).json({ error: 'Spind nicht gefunden' });
-    res.json(locker);
+    await updateLockerStatus(lockerId, 'reserviert');
+    res.json({ ok: true });
   } catch (err) {
-    console.error(`[Locker GET /${req.params.id}] Fehler:`, err);
-    res
-      .status(500)
-      .json({ error: 'DB-Pool nicht initialisiert oder Fehler beim Abrufen' });
+    console.error('[API] Fehler reservieren:', err);
+    res.status(500).json({ ok: false });
   }
 });
 
-// --- Spind reservieren ---
-router.post('/:id/reserve', async (req, res) => {
+router.post('/lockers/:id/occupy', async (req, res) => {
+  const lockerId = parseInt(req.params.id);
   try {
-    const result = await reserveLocker({ lockerId: Number(req.params.id) });
-    if (!result.ok) return res.status(400).json(result);
-    res.json(result);
+    await updateLockerStatus(lockerId, 'besetzt');
+    res.json({ ok: true });
   } catch (err) {
-    console.error(`[Locker POST /${req.params.id}/reserve] Fehler:`, err);
-    res
-      .status(500)
-      .json({
-        error: 'DB-Pool nicht initialisiert oder Fehler beim Reservieren',
-      });
+    console.error('[API] Fehler besetzen:', err);
+    res.status(500).json({ ok: false });
   }
 });
 
-// --- Spind belegen ---
-router.post('/:id/occupy', async (req, res) => {
+router.post('/lockers/:id/release', async (req, res) => {
+  const lockerId = parseInt(req.params.id);
   try {
-    const result = await occupyLocker({ lockerId: Number(req.params.id) });
-    if (!result.ok) return res.status(400).json(result);
-    res.json(result);
+    await updateLockerStatus(lockerId, 'frei');
+    res.json({ ok: true });
   } catch (err) {
-    console.error(`[Locker POST /${req.params.id}/occupy] Fehler:`, err);
-    res
-      .status(500)
-      .json({ error: 'DB-Pool nicht initialisiert oder Fehler beim Belegen' });
-  }
-});
-
-// --- Spind freigeben ---
-router.post('/:id/release', async (req, res) => {
-  try {
-    const result = await releaseLocker({ lockerId: Number(req.params.id) });
-    if (!result.ok) return res.status(400).json(result);
-    res.json(result);
-  } catch (err) {
-    console.error(`[Locker POST /${req.params.id}/release] Fehler:`, err);
-    res
-      .status(500)
-      .json({
-        error: 'DB-Pool nicht initialisiert oder Fehler beim Freigeben',
-      });
+    console.error('[API] Fehler freigeben:', err);
+    res.status(500).json({ ok: false });
   }
 });
 

@@ -1,25 +1,25 @@
 // server.js
 const express = require('express');
+const cors = require('cors');
 const { initializeDatabase } = require('./models/locker.model');
 const lockerRoutes = require('./routes/locker.routes');
+
+const PORT = 3008;
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+// Routen
+app.use('/api', lockerRoutes);
 
 async function startServer() {
   try {
     await initializeDatabase();
-    console.log('[DB] Pool initialisiert');
-
-    const app = express();
-    app.use(express.json());
-
-    app.use('/api/lockers', lockerRoutes);
-
-    const PORT = 3008;
-    app.listen(PORT, () => {
-      console.log(`[Express] Läuft auf Port ${PORT}`);
-    });
+    app.listen(PORT, () => console.log(`[Express] Läuft auf Port ${PORT}`));
   } catch (err) {
-    console.error('[Server Start] Fehler beim Initialisieren der Datenbank:', err);
-    process.exit(1); // Server sofort beenden
+    console.error('[Server Start] DB-Fehler:', err);
+    process.exit(1);
   }
 }
 

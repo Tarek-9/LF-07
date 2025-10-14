@@ -1,23 +1,17 @@
-// models/locker.model.js (komplett, safe defaults & DB-Initialisierung)
-
+// models/locker.model.js
 const mysql = require('mysql2/promise');
 const fs = require('fs/promises');
 const path = require('path');
 const { updateLockerLed } = require('../services/arduino.service');
 
-// --- HILFSVARIABLEN ---
 const SQL_SCHEMA_PATH = path.join(__dirname, '..', 'smart_locker_system.sql');
+
 let pool = null;
 
-// DB-Konfiguration mit sicheren Defaults
-const DB_HOST = process.env?.DB_HOST || '127.0.0.1';
-const DB_USER = process.env?.DB_USER || 'root';
-const DB_PASS = process.env?.DB_PASS || '';
-const DB_NAME = process.env?.DB_NAME || 'smart_locker_system';
-
-// =================================================================
-// DB INITIALISIERUNG
-// =================================================================
+const DB_HOST = process.env.DB_HOST || '127.0.0.1';
+const DB_USER = process.env.DB_USER || 'root';
+const DB_PASS = process.env.DB_PASS || '';
+const DB_NAME = process.env.DB_NAME || 'smart_locker_system';
 
 async function initializeDatabase() {
   try {
@@ -28,17 +22,12 @@ async function initializeDatabase() {
       multipleStatements: true,
     });
 
-    // Datenbank erstellen falls nicht vorhanden
     await rootConnection.execute(`CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;`);
 
-    // Schema einlesen und ausführen
     const sqlSchema = await fs.readFile(SQL_SCHEMA_PATH, 'utf-8');
-    const fullSchemaSql = `USE \`${DB_NAME}\`;\n${sqlSchema}`;
-    await rootConnection.query(fullSchemaSql);
-
+    await rootConnection.query(`USE \`${DB_NAME}\`; ${sqlSchema}`);
     await rootConnection.end();
 
-    // Pool erstellen
     pool = mysql.createPool({
       host: DB_HOST,
       user: DB_USER,
@@ -52,26 +41,26 @@ async function initializeDatabase() {
 
     console.log('[DB] Pool initialisiert');
   } catch (err) {
-    console.error('[Server Start] Fehler beim Initialisieren der Datenbank:', err);
+    console.error('[DB] Fehler bei Initialisierung:', err);
     throw err;
   }
 }
 
-// =================================================================
-// MODEL FUNKTIONEN
-// =================================================================
+function getPool() {
+  if (!pool) throw new Error('DB-Pool nicht initialisiert');
+  return pool;
+}
 
-async function getById(id, conn = pool) {
+// === CRUD-Funktionen ===
+
+async function getById(id) {
+  const conn = getPool();
   const [rows] = await conn.query(`SELECT * FROM spind WHERE id = :id`, { id });
   return rows[0] || null;
 }
 
-async function getByNumber(number, conn = pool) {
-  const [rows] = await conn.query(`SELECT * FROM spind WHERE nummer = :number`, { number });
-  return rows[0] || null;
-}
-
-async function getAll({ status, onlyAvailable } = {}, conn = pool) {
+async function getAll({ status, onlyAvailable } = {}) {
+  const conn = getPool();
   let sql = `SELECT * FROM spind`;
   const params = {};
   const where = [];
@@ -88,113 +77,26 @@ async function getAll({ status, onlyAvailable } = {}, conn = pool) {
   return rows;
 }
 
-async function createMany(numbers, conn = pool) {
+async function createMany(numbers) {
   if (!numbers.length) return [];
+  const conn = getPool();
   const values = numbers.map(n => [n, 'frei']);
-  const [result] = await conn.query(
-    `INSERT INTO spind (nummer, status) VALUES ?`,
-    [values]
-  );
+  const [result] = await conn.query(`INSERT INTO spind (nummer, status) VALUES ?`, [values]);
   return result.insertId;
 }
 
-async function reserveLocker({ lockerId }) {
-  const conn = await pool.getConnection();
-  try {
-    await conn.beginTransaction();
-
-    const [rows] = await conn.query(`SELECT status FROM spind WHERE id = :id FOR UPDATE`, { id: lockerId });
-    const row = rows[0];
-    if (!row) {
-      await conn.rollback();
-      return { ok: false, code: 'NOT_FOUND' };
-    }
-
-    if (row.status !== 'frei') {
-      await conn.rollback();
-      return { ok: false, code: 'NOT_AVAILABLE', currentStatus: row.status };
-    }
-
-    await conn.query(`UPDATE spind SET status = 'reserviert' WHERE id = :id`, { id: lockerId });
-    updateLockerLed('reserviert');
-
-    await conn.commit();
-    return { ok: true };
-  } catch (e) {
-    await conn.rollback();
-    throw e;
-  } finally {
-    conn.release();
-  }
+async function updateLockerStatus(lockerId, status) {
+  const conn = getPool();
+  await conn.query(`UPDATE spind SET status = :status WHERE id = :id`, { id: lockerId, status });
+  updateLockerLed(status);
+  return true;
 }
-
-async function occupyLocker({ lockerId }) {
-  const conn = await pool.getConnection();
-  try {
-    await conn.beginTransaction();
-
-    const [rows] = await conn.query(`SELECT status FROM spind WHERE id = :id FOR UPDATE`, { id: lockerId });
-    const row = rows[0];
-    if (!row) {
-      await conn.rollback();
-      return { ok: false, code: 'NOT_FOUND' };
-    }
-
-    if (row.status === 'besetzt') {
-      await conn.rollback();
-      return { ok: false, code: 'ALREADY_OCCUPIED' };
-    }
-
-    await conn.query(`UPDATE spind SET status = 'besetzt' WHERE id = :id`, { id: lockerId });
-    updateLockerLed('besetzt');
-
-    await conn.commit();
-    return { ok: true };
-  } catch (e) {
-    await conn.rollback();
-    throw e;
-  } finally {
-    conn.release();
-  }
-}
-
-async function releaseLocker({ lockerId }) {
-  const conn = await pool.getConnection();
-  try {
-    await conn.beginTransaction();
-
-    const [rows] = await conn.query(`SELECT status FROM spind WHERE id = :id FOR UPDATE`, { id: lockerId });
-    const row = rows[0];
-    if (!row) {
-      await conn.rollback();
-      return { ok: false, code: 'NOT_FOUND' };
-    }
-
-    await conn.query(`UPDATE spind SET status = 'frei' WHERE id = :id`, { id: lockerId });
-    updateLockerLed('frei');
-
-    await conn.commit();
-    return { ok: true };
-  } catch (e) {
-    await conn.rollback();
-    throw e;
-  } finally {
-    conn.release();
-  }
-}
-
-// =================================================================
-// EXPORT
-// =================================================================
 
 module.exports = {
-  pool,
   initializeDatabase,
+  getPool,
   getById,
-  getByNumber,
   getAll,
   createMany,
-  reserveLocker,
-  occupyLocker,
-  releaseLocker,
+  updateLockerStatus,
 };

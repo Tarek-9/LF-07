@@ -1,24 +1,29 @@
 // models/db.js
 const mysql = require('mysql2/promise');
 
-let pool;
+let pool = null;
 
 function initPool({ DB_HOST, DB_USER, DB_PASS, DB_NAME }) {
+  if (!DB_HOST || !DB_USER || !DB_NAME) {
+    throw new Error('DB-Variablen nicht gesetzt');
+  }
+
   pool = mysql.createPool({
     host: DB_HOST,
     user: DB_USER,
-    password: DB_PASS,
+    password: DB_PASS || '',
     database: DB_NAME,
     waitForConnections: true,
     connectionLimit: 10,
-    namedPlaceholders: true,
     timezone: 'Z',
   });
+
+  console.log('[DB] Pool initialisiert');
 }
 
-function query(sql, params) {
+function getPool() {
   if (!pool) throw new Error('DB-Pool nicht initialisiert');
-  return pool.query(sql, params);
+  return pool;
 }
 
-module.exports = { initPool, query };
+module.exports = { initPool, getPool };
